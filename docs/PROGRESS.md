@@ -26,12 +26,13 @@ M6 Modules + import (21–22) · M7 Integrations (23) · M8 Polish + ship (24–
 - [x] .github/workflows/ci.yml: 3-OS matrix (fmt, clippy -D warnings, test) + patch artifacts + commented Phase-24 release stub
 - [x] `cargo test` green workspace-wide; clippy `-D warnings` clean; artifacts emitted (patches + zip)
 
-### Phase 02 — Settings registry + vault (mochy-config, mochy-vault)
-- [ ] Settings registry: 398 static keys + per-style dynamic factory, key names identical to `PreferenceKeys.kt`
-- [ ] Defaults table, typed accessors, search index (≈100 entries), JSON/TOML serializer, atomic persistence, live watchers
-- [ ] Audio-lab store mapping (`eq/AudioLabStore`) + the 22 SharedPreferences stores as config sections
-- [ ] mochy-vault: 12 keys over keyring 4 (Credential Manager / Secret Service / Keychain)
-- [ ] Settings round-trip test; HANDOFF entry
+### Phase 02 — Settings registry + vault + net (mochy-config, mochy-vault, mochy-net)
+- [x] Settings registry: 398 static keys (397 rows; the MixSortDescendingKey alias folds into albumSortDescending) + per-style dynamic factory helper, key names identical to `PreferenceKeys.kt`
+- [x] Defaults table, typed accessors, search index, JSON/TOML serializer, atomic persistence (temp+fsync+rename), live per-key/per-page/global watchers
+- [x] Audio-lab store mapping (`eq/AudioLabStore`) + the 22 SharedPreferences stores as config sections
+- [x] mochy-vault: 12 keys over keyring 4 (Credential Manager / Secret Service / Keychain) + in-memory test backend
+- [x] mochy-net: reqwest factory (rustls, gzip/brotli, H2, cookies, proxy+auth, UA policy), IpVersion pinning, DoH via hickory, moka response cache (byte-range stub) + 50 MB disk cache, offline flag, 3-attempt IO-only backoff, typed 429 short-circuit
+- [x] Settings round-trip test; TransferArchive import (typed settings.json + preferences_pb fallback); HANDOFF entry
 
 ### Phase 03 — Database (mochy-db)
 - [ ] Schema v45 mirror: 24 tables + 3 views, identical column names; PRAGMA user_version = 1 at v45 baseline DDL
@@ -49,9 +50,9 @@ M6 Modules + import (21–22) · M7 Integrations (23) · M8 Polish + ship (24–
 
 ## M1 — Innertube core
 
-### Phase 05 — Networking + transport (mochy-net, mochy-innertube transport)
-- [ ] mochy-net: reqwest factory (rustls), proxy SOCKS/HTTP + auth, IPv4/IPv6 pinning, DoH, 50 MB disk response cache, offline/data-saver flags
-- [ ] InnerTube transport port: per-request header injection, gzip, HTTP/2, 3-attempt exponential backoff on IO errors, 429 short-circuit
+### Phase 05 — Networking + transport (mochy-innertube transport)
+- [x] mochy-net: reqwest factory (rustls), proxy SOCKS/HTTP + auth, IPv4/IPv6 pinning, DoH, 50 MB disk response cache, offline flag (pulled forward into Phase 02 by its task prompt; data-saver gate remains — it reads the connectivity observer, Phase 05)
+- [ ] InnerTube transport port: per-request header injection, gzip, HTTP/2, 3-attempt exponential backoff on IO errors, 429 short-circuit (the shared policy + error types exist in mochy-net since Phase 02; this is the InnerTube.kt request-shaping port)
 - [ ] Guest visitor-data scraping + rotation (`BotDetectionMitigator` semantics); HANDOFF entry
 
 ### Phase 06 — Models, parsers, browse/search (mochy-innertube)

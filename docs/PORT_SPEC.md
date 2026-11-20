@@ -298,6 +298,13 @@ blueprint's lindera — encoding_rs conflict with rustypipe-botguard; see
 HANDOFF) + pinyin 0.11.0 · rustfft 6.4.1 · rubato 5.1.0 · proptest 1.12.0 ·
 zbus 6.4.0 + mpris-server 0.11.0 + windows 0.62.2 · clap 4.6.9.
 
+Phase 02 additions (verified on crates.io 2026-11-20, recorded in
+HANDOFF ## Phase 02): `toml` 1.2.1 (the `settings!` macro's TOML backup
+serializer), `paste` 1.0.15 (identifier concatenation inside the macro),
+`hickory-resolver` 0.26.3 with the `https-aws-lc-rs` transport (DoH for the
+Musixmatch path; aws-lc-rs shares reqwest rustls' crypto provider so no
+second TLS stack is pulled).
+
 Licensing constraints that ride along: yt-dlp EJS bundle = Unlicense (safe to
 vendor); **meriyah/astring licenses need verification before vendoring**;
 symphonia = MPL-2.0 (used unmodified — no file-level disclosure triggered);
