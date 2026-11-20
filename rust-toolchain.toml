@@ -1,0 +1,9 @@
+# Pinned toolchain for the whole workspace (Phase 01 decision: exact stable
+# pin, not a moving "stable" — see docs/HANDOFF.md ## Phase 01).
+# Verified 2026-11-20: 1.100.0 is the current stable (rustc 1.100.0
+# 0ef1bc386 2026-11-09). rustup installs this file's toolchain automatically,
+# including the two components below.
+[toolchain]
+channel = "1.100.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

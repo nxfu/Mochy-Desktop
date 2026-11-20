@@ -1,0 +1,18 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# Phase artifacts (generated per phase, never committed)
+/patches/
+mochy-desktop-phase-*.zip
+
+# IDE / OS noise
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.*

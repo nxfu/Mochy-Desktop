@@ -1,0 +1,90 @@
+Mochy Music for Desktop — NOTICE
+Copyright (C) 2026 Mochy Music Port Initiative
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. The full license text is in the LICENSE file.
+
+This project is a derivative work of Mochy Music for Android and is
+released under GPL-3.0 with source availability, preserved copyright
+notices and the credit chain below, as required by the upstream
+licenses and by the upstream projects' own contributor rules
+(AGENTS.md in the Android repository asks every fork to keep the
+original notices and say what changed).
+
+=======================================================================
+CREDIT CHAIN (Mochy -> ViviMusic -> Metrolist -> InnerTune/ViMusic)
+=======================================================================
+
+1. Mochy Music — realidkroo — GPL-3.0
+   https://github.com/realidkroo/Mochy-Music
+   The parity baseline for this port: v8.4.2 build#1271 (versionCode
+   73), commit bde01cb4. Everything this desktop application
+   re-implements — playback, queue semantics, the audio DSP platform,
+   the lyrics engine, the module/skin system, the importer, the
+   integrations and the design language — comes from Mochy Music.
+   Mochy adds on top of its ancestors: TV mode + phone link, Android
+   Auto, Stage native DSP + Audio Lab, exclusive/USB output, the
+   module platform + skins, crossmix, the song editor, the
+   Spotify/Apple/Tidal/CSV importers, Discord RPC, i18n, the in-app
+   updater and the docs site.
+
+2. ViviMusic — vivizzz007 — GPL-3.0
+   https://github.com/vivizzz007/vivi-music
+   Mochy Music is a June 2026 snapshot re-import of ViviMusic that has
+   since diverged massively. From ViviMusic this lineage carries the
+   app shell, the Compose UI scaffolding, the innertube module, the
+   lyrics provider stack, last.fm support, uCrop flows and the NEW-UI
+   design language.
+
+3. Metrolist — Mostafa Alagamy (MetrolistGroup) — GPL-3.0
+   https://github.com/mostafaalagamy/Metrolist
+   ViviMusic's code-derived base; the direct source of the
+   InnerTubeX streaming engine (com.github.MetrolistGroup.innertubex),
+   the widget manager, the PO-token approach and the base framework.
+
+4. InnerTune (z-huang) and ViMusic (vfsfitvnm) — GPL-3.0
+   https://github.com/z-huang/InnerTune
+   https://github.com/vfsfitvnm/ViMusic
+   The deep ancestors of the whole lineage: the strings corpus, the
+   Room schema lineage, the KuGou + LRCLIB provider pattern and the
+   app skeleton.
+
+Upstream evidence for this chain is preserved in the Android
+repository (AGENTS.md credits, AboutSheet.kt license entries, the
+initial snapshot commits and the leftover com.music.vivi artifacts)
+and is summarized in docs/BLUEPRINT.pdf, chapter 2.3.
+
+=======================================================================
+BUNDLED / VENDORED WORKS AND DEPENDENCY LICENSE NOTES
+=======================================================================
+
+- yt-dlp EJS signature-solver bundle (the "bundle.js" n-parameter
+  solver executed upstream by utils/sabr/EjsNTransformSolver.kt):
+  Unlicense (public domain). Safe to vendor unmodified.
+
+- meriyah and astring (JavaScript parser/printer candidates for the
+  signature-cipher path): their licenses have NOT yet been verified
+  for this port. Do NOT vendor either library until the verification
+  is done and recorded in docs/HANDOFF.md.
+
+- symphonia (audio decoding): MPL-2.0. We consume it unmodified from
+  crates.io and do not modify it; MPL-2.0 file-level modification
+  disclosure therefore never triggers. If a fork of symphonia ever
+  becomes necessary, modified files must be disclosed under MPL-2.0.
+
+- All other first-line dependencies (gpui, gpui-component, tokio,
+  reqwest, serde, rusqlite, keyring, cpal, tray-icon, muda, rfd,
+  rquickjs, rustypipe-botguard, wry, image, resvg, moka, lindera,
+  pinyin, rustfft, rubato, lofty, axum, zbus, notify-rust, ...) are
+  MIT, Apache-2.0, ISC or BSD-licensed — GPL-3.0-compatible. The
+  authoritative per-crate list with verified versions lives in the
+  root Cargo.toml ([workspace.dependencies]) and docs/PORT_SPEC.md.
+
+- No telemetry, no analytics, no crash reporting to any server. Crash
+  and playback logs stay on the user's device.
+
+This NOTICE must travel with every distribution of this project
+(source or binary). If you fork this project, keep the chain above
+and add yourself at the top with what you changed.
