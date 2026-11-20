@@ -1,0 +1,120 @@
+# CI — Mochy Music for Desktop.
+#
+# Phase 01 scope: keep the workspace green on all three target OSes and
+# publish the phase's patch series as an artifact. The release workflow is a
+# commented stub for Phase 24 (see bottom of this file).
+#
+# The toolchain is pinned by rust-toolchain.toml (1.100.0 + rustfmt +
+# clippy); the install step parses the file so this workflow never holds a
+# second, drifting copy of the pin.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  test:
+    name: fmt + clippy + test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned toolchain from rust-toolchain.toml
+        shell: bash
+        run: |
+          CHANNEL="$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)"
+          echo "Installing pinned toolchain: ${CHANNEL}"
+          rustup toolchain install "${CHANNEL}" --profile minimal --component rustfmt --component clippy
+          rustup default "${CHANNEL}"
+
+      # Phase 04 note: once crates depend on gpui/wry, the Linux leg needs
+      # their system libraries, e.g.:
+      #   sudo apt-get update && sudo apt-get install -y \
+      #     libxkbcommon-dev libwayland-dev libvulkan-dev \
+      #     libgtk-3-dev libasound2-dev libudev-dev
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt --check
+        run: cargo fmt --all --check
+
+      - name: cargo clippy -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace
+
+  patches:
+    name: phase patch series
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history: format-patch needs the base ref
+
+      - name: Generate patches (origin/main..HEAD)
+        run: |
+          mkdir -p patches
+          git format-patch origin/main..HEAD -o patches/
+          echo "--- patch series ---"
+          ls -1 patches/ || true
+
+      - name: Upload patches artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-patches
+          path: patches/
+          if-no-files-found: ignore # empty when running on main itself
+
+# ---------------------------------------------------------------------------
+# RELEASE WORKFLOW STUB — Phase 24 enables and fills this in.
+#
+# Plan of record (docs/PORT_SPEC.md §8/§10, blueprint ch. 13/14):
+#
+# name: Release
+# on:
+#   push:
+#     tags: ["v*"]
+#   workflow_dispatch:
+#
+# jobs:
+#   build:
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         include:
+#           - { os: windows-latest, target: x86_64-pc-windows-msvc }   # MSI (WiX)
+#           - { os: ubuntu-latest,  target: x86_64-unknown-linux-gnu } # deb + AppImage (+ Flatpak manifest)
+#           - { os: macos-latest,   target: aarch64-apple-darwin }     # notarized dmg
+#           - { os: macos-latest,   target: x86_64-apple-darwin }
+#     runs-on: ${{ matrix.os }}
+#     steps:
+#       - uses: actions/checkout@v4
+#         with: { fetch-depth: 0 }
+#       - run: rustup toolchain install --profile minimal
+#       # 1. cargo-dist builds + packages: dist plan in dist-workspace.toml
+#       #    (installer scripts, updater artifacts, channels).
+#       # 2. axoupdater feeds the in-app updater (Phase 24 dependency note:
+#       #    updater is COMPILED OUT of package-manager builds — Flatpak,
+#       #    deb, rpm, winget — and enabled for tarball/MSI/dmg channels).
+#       # 3. Sign: Windows codesigning cert (secrets), macOS
+#       #    codesign + notarytool notarization with APPLE_ID / APPLE_PASSWORD /
+#       #    APPLE_TEAM_ID secrets; Linux builds ship unsigned with checksums.
+#       # 4. Upload: GitHub release assets + cargo-dist manifest
+#       #    (taiki-e/upload-rust-binary-action or dist's own upload).
+#       # 5. Auto-update: axoupdater's server-side manifest is published by
+#       #    dist as part of the release artifacts.
+#
+# Phase 24 must also decide: release channels (stable/beta), tag scheme,
+# and the Flatpak manifest location (flatpak/ dir, referenced from
+# docs/PORT_SPEC.md).
+# ---------------------------------------------------------------------------
