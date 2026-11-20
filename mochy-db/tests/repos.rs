@@ -97,6 +97,59 @@ async fn song_repo_inserts_reads_and_toggles_like() {
     assert_eq!(since, vec!["s1".to_string()]);
 }
 
+/// toggleLibrary state machine (SongEntity.kt:74-88): ADDING to the
+/// library must NOT touch `liked`/`likedDate` (upstream
+/// `liked = if (inLibrary == null) liked else false`), and REMOVING
+/// clears them. Regression: an earlier port version forced `liked = true`
+/// on add, which upstream never does.
+#[tokio::test]
+async fn song_repo_toggle_library_keeps_liked_on_add() {
+    let (_db, repos) = db_with_repos().await;
+    seed_song(&repos, "s1", "Nightcall", None).await;
+
+    // A song that is NOT liked and NOT in the library.
+    let song = repos.songs.song("s1").unwrap().unwrap();
+    assert!(!song.song.liked);
+    assert_eq!(song.song.in_library, None);
+
+    // Adding to the library: liked stays false (SongEntity.kt:76-78).
+    let updated = repos
+        .songs
+        .toggle_library("s1".into(), T0 + 1000, false)
+        .await
+        .unwrap()
+        .expect("song");
+    assert!(!updated.liked, "adding to library must not like the song");
+    assert_eq!(updated.liked_date, None);
+    assert_eq!(updated.in_library, Some(T0 + 1000));
+    assert!(!updated.added_by_like);
+
+    // It must not appear in the liked list.
+    assert_eq!(repos.songs.liked_songs_count().unwrap(), 0);
+
+    // Removing from the library: liked (still false) and dates cleared.
+    let updated = repos
+        .songs
+        .toggle_library("s1".into(), T0 + 2000, false)
+        .await
+        .unwrap()
+        .expect("song");
+    assert!(!updated.liked);
+    assert_eq!(updated.in_library, None);
+    assert_eq!(updated.liked_date, None);
+
+    // And the byLike variant stamps addedByLike on add.
+    let updated = repos
+        .songs
+        .toggle_library("s1".into(), T0 + 3000, true)
+        .await
+        .unwrap()
+        .expect("song");
+    assert_eq!(updated.in_library, Some(T0 + 3000));
+    assert!(updated.added_by_like);
+    assert!(!updated.liked, "byLike does not flip liked either");
+}
+
 // --- ArtistRepository -----------------------------------------------------
 
 #[tokio::test]

@@ -337,6 +337,39 @@ mod tests {
         );
     }
 
+    /// Defaults audit (2026-11-20, master audit of Phases 01-03): pins the
+    /// read-site defaults that were found wrong in the first pass — every
+    /// list-sort "descending" toggle defaults TRUE upstream, ytmSync and
+    /// showArtistVideo default TRUE, and the theme color default is
+    /// `Color(0xFF8E8E8E).toArgb()` (MainActivity.kt:570 + Theme.kt:27).
+    #[test]
+    fn audited_defaults_match_upstream_read_sites() {
+        let s = Settings::with_defaults();
+        for id in [
+            SettingId::SongSortDescending,
+            SettingId::PlaylistSongSortDescending,
+            SettingId::LikedSongSortDescending,
+            SettingId::ArtistSortDescending,
+            SettingId::AlbumSortDescending,
+            SettingId::PlaylistSortDescending,
+            SettingId::AddToPlaylistSortDescending,
+            SettingId::ArtistSongSortDescending,
+            SettingId::ShowArtistVideo,
+            SettingId::YtmSync,
+        ] {
+            assert_eq!(
+                s.bool_value(id.key_name()),
+                Some(true),
+                "{} must default true (upstream read sites)",
+                id.accessor_name()
+            );
+        }
+        // Theme.kt:27 Color(0xFF8E8E8E).toArgb() as signed i32.
+        assert_eq!(s.SelectedThemeColor(), -7_434_610);
+        // Dead key with zero upstream readers stays out of the settings UI.
+        assert!(SettingId::AutoPlaylistSongSortDescending.hidden());
+    }
+
     #[test]
     fn pages_are_unique_and_titled() {
         let all = SettingsPage::ALL;

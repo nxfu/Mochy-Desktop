@@ -30,6 +30,32 @@ pub const PERSISTED_FORMAT: &str = "mochy-desktop-settings";
 /// Bump when the file layout changes incompatibly.
 pub const PERSISTED_VERSION: u32 = 1;
 
+/// The Android key names that are VAULT-owned secrets
+/// (utils/SecretPreferences.kt:41-54 — exactly the 12 the desktop keeps in
+/// `mochy-vault`). Upstream stores them in the Keystore-sealed secret
+/// store, never in the plain settings DataStore; the desktop settings file
+/// must therefore never persist them either. A caller setting one through
+/// the registry keeps the in-memory value for the session, but [`save`]
+/// skips it with a warning — route secrets through the vault instead.
+pub const SECRET_KEYS: &[&str] = &[
+    "innerTubeCookie",
+    "visitorData",
+    "dataSyncId",
+    "discordAccessToken",
+    "discordRefreshToken",
+    "lastfmSession",
+    "librefmSession",
+    "openRouterApiKey",
+    "deeplApiKey",
+    "monochromePlaybackApiToken",
+    "turnstileBypassToken",
+    "proxyPassword",
+];
+
+fn is_secret_key(key: &str) -> bool {
+    SECRET_KEYS.contains(&key)
+}
+
 /// Errors the settings store can produce.
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -422,6 +448,22 @@ impl SettingsStore {
     fn encode(&self, settings: &Settings) -> Result<Vec<u8>, ConfigError> {
         let mut values = HashMap::with_capacity(settings.values.len());
         for (key, value) in &settings.values {
+            if is_secret_key(key) {
+                // Vault-owned (SecretPreferences.kt:41-54): a secret must
+                // never land in the plain JSON settings file. The registry
+                // seeds every key with its default (""), which is simply
+                // skipped; a NON-default value means a caller set a secret
+                // through the wrong door — keep it for the session, warn,
+                // and let the vault own persistence.
+                let is_default = matches!(value, SettingValue::Str(s) if s.is_empty());
+                if !is_default {
+                    warn!(
+                        key,
+                        "secret set through the settings registry; not persisting — use mochy-vault"
+                    );
+                }
+                continue;
+            }
             values.insert(key.clone(), value_to_typed_entry(value));
         }
         let mut prefs = HashMap::with_capacity(settings.prefs.len());
@@ -852,6 +894,54 @@ mod tests {
         store.save().unwrap();
         assert!(path.exists());
         assert!(!dir.join("settings.tmp").exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Secrets never reach the persisted JSON file (audit of the vault/
+    /// settings boundary): the 12 vault-owned keys are skipped by `save`
+    /// even when a caller sets them through the registry.
+    #[test]
+    fn secrets_never_persist_to_the_settings_file() {
+        let dir = std::env::temp_dir().join(format!("mochy-config-sec-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        let _ = fs::remove_file(&path);
+
+        let store = SettingsStore::load(&path);
+        store
+            .set_ProxyPassword("hunter2-super-secret".to_owned())
+            .unwrap();
+        store
+            .set_DiscordAccessToken("MTIzNDU2Nzg5".to_owned())
+            .unwrap();
+        store.set_PersistentQueue(false).unwrap();
+        store.save().unwrap();
+
+        let raw = fs::read_to_string(&path).unwrap();
+        assert!(
+            !raw.contains("hunter2-super-secret"),
+            "proxy password leaked into the settings file"
+        );
+        assert!(
+            !raw.contains("MTIzNDU2Nzg5"),
+            "discord token leaked into the settings file"
+        );
+        for key in SECRET_KEYS {
+            assert!(
+                !raw.contains(&format!("\"{key}\"")),
+                "secret key {key} must not appear in the persisted file"
+            );
+        }
+        // Non-secret values still persist.
+        assert!(raw.contains("persistentQueue"));
+
+        // Reload: the secret fell back to its default (vault owns it),
+        // while the normal setting round-trips.
+        let reloaded = SettingsStore::load(&path);
+        let snap = reloaded.snapshot();
+        assert!(!snap.PersistentQueue());
+        assert_eq!(snap.ProxyPassword(), "");
+
         fs::remove_dir_all(&dir).unwrap();
     }
 

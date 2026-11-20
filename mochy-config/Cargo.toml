@@ -12,6 +12,10 @@ repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+# Inherit the workspace lint table (root Cargo.toml).
+[lints]
+workspace = true
+
 [dependencies]
 # Domain crate: serde + thiserror + tracing only — no GPUI, no tokio
 # (PORT_SPEC §3.1 layering rules).

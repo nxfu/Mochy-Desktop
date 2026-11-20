@@ -69,6 +69,14 @@ pub struct Db {
 /// How many read connections to open (upstream's fixed pool size).
 const READER_POOL_SIZE: usize = 4;
 
+/// Process-global sequence for in-memory database names — see
+/// [`Db::open_in_memory`] for why this must not be a clock read.
+fn next_memory_db_seq() -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    NEXT.fetch_add(1, Ordering::Relaxed)
+}
+
 impl Db {
     /// Opens (creating if needed) the database at `path` and ensures the
     /// v45 baseline schema is present.
@@ -115,14 +123,20 @@ impl Db {
             | rusqlite::OpenFlags::SQLITE_OPEN_URI
             | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
             | rusqlite::OpenFlags::SQLITE_OPEN_SHARED_CACHE;
-        let uri = "file:mochydb-test-{}?mode=memory&cache=shared";
         // Unique per-instance URI so parallel tests never share a cache.
-        let uri = uri.replace(
-            "{}",
-            &std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_nanos().to_string())
-                .unwrap_or_else(|_| "0".to_string()),
+        //
+        // The name is `pid-counter`, NOT a clock read: macOS `clock_gettime`
+        // ticks at microsecond granularity, so two `SystemTime::now()` calls
+        // from parallel test threads can return the SAME nanosecond value,
+        // which made two tests open the same shared-cache in-memory database
+        // (the second `INSERT OR IGNORE` of the same song id then silently
+        // returned `Ok(false)` — the macOS CI flake in `tests/watcher.rs`).
+        // A process-global atomic counter is unique by construction on every
+        // OS; the pid merely keeps the name self-describing.
+        let uri = format!(
+            "file:mochydb-test-{}-{}?mode=memory&cache=shared",
+            std::process::id(),
+            next_memory_db_seq(),
         );
         let writer = tokio_rusqlite::Connection::open_with_flags(&uri, flags).await?;
         let setup_uri = uri.clone();

@@ -41,6 +41,40 @@ rust-version = "1.100"
 publish = false
 
 # ---------------------------------------------------------------------------
+# Cargo's own lints.
+#
+# `unused_workspace_dependencies = "allow"` is a DELIBERATE, documented
+# choice (2026-11-20 audit, §13.5): this workspace pre-pins every external
+# dependency once in [workspace.dependencies] so later phases inherit
+# verified versions (Phase 01 decision 4 — pins were validated against
+# crates.io and resolved as a full graph). Until a member references a pin,
+# cargo 1.100 would otherwise emit one "unused workspace dependency"
+# warning per reserved pin (37 at the time of this change) on every CI
+# build. Every warned pin maps to a scheduled phase:
+#   gpui, gpui-component, tracing-subscriber, clap ......... Phase 04 (app shell)
+#   wry, rustypipe-botguard, rquickjs ...................... Phase 07/08 (login, PO tokens, EJS)
+#   symphonia, symphonia-adapter-libopus, lru .............. Phase 09 (decode pipeline)
+#   proptest ................................................ Phase 10 (queue property tests)
+#   cpal .................................................... Phase 11 (output router)
+#   image, resvg, dominant_color, palette .................. Phase 12 (design system)
+#   interprocess, zbus, mpris-server, windows, tray-icon,
+#   muda, notify-rust, tauri-winrt-notification,
+#   mac-notification-sys ............................... Phase 14 (media/tray/notifications)
+#   lofty .................................................. Phase 17/22 (tags, local import)
+#   vibrato, pinyin ........................................ Phase 18 (romanization)
+#   rustfft, rubato ........................................ Phase 19 (DSP)
+#   mdns-sd, axum, tokio-tungstenite ....................... Phase 23 (link, Discord WS)
+#   rust-i18n .............................................. Phase 24 (i18n harvest)
+#   anyhow ................................................ app-level error typing (Phase 04+)
+# Removing them instead would fork the pin list from PORT_SPEC §9 and let
+# future phases drift; the allow is scoped to exactly this one cargo lint.
+# Members inherit through `[lints] workspace = true` (which also future-
+# proofs centralized rustc/clippy lint policy).
+# ---------------------------------------------------------------------------
+[workspace.lints.cargo]
+unused_workspace_dependencies = "allow"
+
+# ---------------------------------------------------------------------------
 # Shared dependency pins.
 #
 # Every version was verified against crates.io on 2026-11-20 (Phase 01;

@@ -16,12 +16,15 @@ const TZ_OFFSET_MINUTES: i32 = 330; // IST — a non-hour offset proves the math
 const T0_WALL_CLOCK: i64 = 1_795_152_600_000; // 2026-11-20T05:30Z as stored = 00:00 true UTC
 
 fn temp_dir(tag: &str) -> PathBuf {
+    // Counter, not a clock read: macOS `clock_gettime` ticks at microsecond
+    // granularity, so timestamp-derived names can collide between parallel
+    // tests (same root cause as the in-memory DB name flake fixed in db.rs).
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let seq = NEXT.fetch_add(1, Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!(
-        "mochy-db-importer-{tag}-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
+        "mochy-db-importer-{tag}-{}-{seq}",
+        std::process::id()
     ));
     std::fs::create_dir_all(&dir).unwrap();
     dir

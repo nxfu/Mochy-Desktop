@@ -559,3 +559,85 @@ importer (Milestone M0, part 3).
 5. The Linux CI leg will need GPUI's system libraries once `mochy` gains
    its gpui dep (the ci.yml comment lists them) — wire that in this
    phase, not later.
+
+## Master audit of Phases 01–03 — 2026-11-20
+
+**Status:** done (audit complete; all CRITICAL/HIGH/MEDIUM findings fixed;
+artifacts re-emitted)
+
+**Task:** evidence-driven audit of Phases 01–03 against the pinned
+upstream + fix the macOS CI watcher failure + remediate the unused
+workspace dependency warnings. Full reports:
+`docs/audits/{PHASE_01,PHASE_02,PHASE_03,INTEGRATION}_AUDIT.md`,
+`MASTER_AUDIT_REPORT.md`, `REQUIREMENTS_MATRIX.md` (106 PASS / 3
+UNVERIFIED / 0 FAIL of 109 requirements).
+
+### Decisions
+
+1. **macOS CI root cause (F-001, CRITICAL):** `Db::open_in_memory` named
+   the shared-cache URI from `SystemTime::now()` nanos; macOS
+   `clock_gettime` ticks at microsecond granularity, so parallel tests
+   could draw identical values, share ONE in-memory DB, and the second
+   `INSERT OR IGNORE` of the same song id silently returned `Ok(false)`
+   — exactly the `assert!(inserted)` failure on macOS. The broadcast
+   system was never at fault (send-after-commit-before-reply ordering
+   verified). Fix: `pid` + process-global `AtomicU64` counter — unique by
+   construction on every OS. Reproduced deterministically by forcing a
+   fixed URI (byte-identical CI failure), then fixed; 50/50 stress runs.
+   The importer tests' timestamp-named temp dirs got the same hardening.
+2. **toggle_library semantics (F-002, HIGH):** the port forced
+   `liked = true` when adding to the library; upstream leaves `liked`
+   unchanged on add (SongEntity.kt:76-78) and clears it on remove.
+   Fixed to the upstream state machine + regression test.
+3. **Registry defaults audit (F-003, HIGH):** mechanical re-harvest of all
+   upstream default read sites (247 keys covered) found 11 wrong rows:
+   ten `bool` keys defaulting `false` that are `true` upstream (all
+   library sort-descending keys, `showArtistVideo`, `ytmSync`) and
+   `selectedThemeColor` (-6035826 → -7434610 =
+   `Color(0xFF8E8E8E).toArgb()`). `addToPlaylistSortDescending` has
+   CONFLICTING upstream sites (`?: true` in PlaylistsViewModel vs `false`
+   in AddToPlaylistDialogOnline); resolved `true` for consistency with
+   every sibling sort key. The dead key
+   `autoPlaylistSongSortDescending` (zero upstream readers) is now
+   `hidden: true`.
+4. **Secrets/settings boundary (F-004, MEDIUM):** the 12 vault-owned keys
+   are registry rows (needed for Android import round-trip), and
+   `encode()` serialized every value — a secret set through a typed setter
+   would land in plain `settings.json`. `encode()` now skips
+   `SECRET_KEYS` (SecretPreferences.kt:41-54), warning when the value is
+   non-default; test proves neither key names nor values can appear in
+   the file.
+5. **Unused workspace deps (F-005, MEDIUM):** kept every reserved pin
+   (each maps to a scheduled phase — table in the root Cargo.toml
+   comment) and silenced exactly the one cargo lint
+   (`[workspace.lints.cargo] unused_workspace_dependencies = "allow"`),
+   with `[lints] workspace = true` inherited by all 19 members.
+   `cargo check`/`clippy -D warnings`: 0 warnings.
+6. **LOW findings documented, not code-changed:** "22"→21 converter
+   columns (F-006), "20"→21 login keys comment (F-007), uncommitted
+   registry generator (F-008 — commit the next harvester to `scripts/`),
+   shared-cache table-lock caveat for the in-memory test path (F-009),
+   fixed `.tmp` name in save() (F-011), duplicated secret-name consts
+   (F-014, revisit at Phase 04 wiring).
+
+### Deviations
+
+- None from the phase specs. All fixes move the port TOWARD upstream
+  behavior; the lint config is a CI-hygiene change with a documented
+  rationale.
+
+### Verification (acceptance)
+
+- `cargo fmt --all -- --check` clean; `cargo check --workspace` 0
+  warnings (was 37); `cargo clippy --workspace --all-targets --
+  -D warnings` 0; `cargo test --workspace` **117/117** across 41
+  binaries (mochy-config 29, mochy-vault 6, mochy-net 28, mochy-db 39).
+- Watcher stress: 50 consecutive runs, 8 threads, 0 failures; also green
+  single-threaded. **macOS confirmation is CI-pending** (local
+  reproduction was deterministic; the sandbox is Linux).
+
+### Next steps (unchanged for Phase 04)
+
+1. Push and let the 3-OS matrix run — the macOS leg going green closes
+   F-001 with runtime evidence.
+2. Proceed with Phase 04 per the Phase 03 entry's list; no blockers.

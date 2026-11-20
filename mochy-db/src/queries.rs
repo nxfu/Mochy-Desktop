@@ -452,6 +452,11 @@ pub fn local_toggle_like(conn: &Connection, id: &str, now_ms: i64) -> DbResult<O
 /// `SongEntity.toggleLibrary(syncToYouTube = false, byLike)`
 /// (SongEntity.kt:74-88) — STATE MACHINE only; the YouTube library-toggle
 /// call is the Phase 14 SongService hook.
+///
+/// Upstream on ADD (`inLibrary == null`): `liked` and `likedDate` are LEFT
+/// UNCHANGED (`liked = if (inLibrary == null) liked else false`), only
+/// `inLibrary` is stamped and `addedByLike = byLike`. On REMOVE: `liked`
+/// and `likedDate` are cleared.
 pub fn toggle_library(
     conn: &Connection,
     id: &str,
@@ -462,10 +467,11 @@ pub fn toggle_library(
         return Ok(None);
     };
     if song.in_library.is_none() {
-        song.liked = true;
+        // Adding: liked/likedDate keep their current values (SongEntity.kt:76-78).
         song.in_library = Some(now_ms);
         song.added_by_like = by_like;
     } else {
+        // Removing: the song is no longer liked either (SongEntity.kt:76-79).
         song.liked = false;
         song.in_library = None;
         song.liked_date = None;
