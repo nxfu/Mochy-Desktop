@@ -1,7 +1,7 @@
 # mochy-db — rusqlite schema v45 mirror, repositories, invalidation events, Android-DB importer
 #
 # Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
-# Upstream source (Android, pin bde01cb4): db/ (39 files: 24 entities, 3 views, mega-DAO 2,131 lines, 14 hand-written migrations) + di/AppModule DB + app/schemas/ lineage
+# Upstream source (Android, pin bde01cb4): db/ (39 files: 24 entities, 3 views, mega-DAO 2,131 lines, 14 hand-written migrations) + di/AppModule DB + app/schemas lineage
 [package]
 name = "mochy-db"
 description = "rusqlite schema v45 mirror, repositories, invalidation events, Android-DB importer."
@@ -12,3 +12,25 @@ repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[dependencies]
+# Bundled SQLite: same library on all three desktop OSes (blueprint ch. 7.1).
+rusqlite = { workspace = true }
+# Single-writer DB actor: dedicated thread + crossbeam command channel,
+# results over a runtime-independent oneshot (blueprint ch. 9.2; the Phase 03
+# task pins "command channel over tokio-rusqlite").
+tokio-rusqlite = { workspace = true }
+# Only the sync primitives (broadcast invalidation bus). tokio-rusqlite
+# pulls tokio anyway; the write futures themselves are runtime-agnostic
+# (no timers/IO), so GPUI's executor can poll them (PORT_SPEC §3.1 note).
+tokio = { workspace = true }
+# Import report / queue-reconstruction / downloads-seed serialization (the
+# report is JSON so Phase 10/15 can consume the records without linking this
+# crate's types).
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+# #[tokio::test] for actor-based tests (write path + invalidation).
+tokio = { workspace = true }
