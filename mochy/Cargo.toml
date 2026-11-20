@@ -1,0 +1,14 @@
+# mochy — GPUI entry, window set (main, TV mode, floating lyrics, webview children), services builder, action/keymap registry, deep links, launch gate, single-instance
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): App.kt staged init, MainActivity.kt (NavHost + bottom nav + player sheet + deep-link handling), NavigationBuilder.kt, ui/launch/ (LaunchIntro), the CompositionLocal fabric (replaced by a typed AppContext)
+[package]
+name = "mochy"
+description = "GPUI entry, window set (main, TV mode, floating lyrics, webview children), services builder, action/keymap registry, deep links, launch gate, single-instance."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

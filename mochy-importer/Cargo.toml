@@ -1,0 +1,14 @@
+# mochy-importer — Account/link/CSV/local importers, TrackMatcher, TransferArchive, YT sync engine
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): importer/ (42 files: Spotify/Apple/Tidal accounts, LinkImporter, CsvImport, LocalImportService, transfer/) + utils/SyncUtils (YT two-way sync)
+[package]
+name = "mochy-importer"
+description = "Account/link/CSV/local importers, TrackMatcher, TransferArchive, YT sync engine."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

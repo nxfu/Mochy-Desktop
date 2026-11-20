@@ -1,0 +1,41 @@
+# mochy-audio — Decode pipeline, DSP graph (EQ, spatial, reverb, loudness, 8D, Stage port, crossmix renderer), exclusive output router, spectrum tap
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): eq/ (25 files) + playback/audio/ (incl. pass/ exclusive + USB) + cpp/stage (libmochystage, 979 .cpp lines) + crossmix/ renderer + AudioSpectrum
+[package]
+name = "mochy-audio"
+description = "Decode pipeline, DSP graph (EQ, spatial, reverb, loudness, 8D, Stage port, crossmix renderer), exclusive output router, spectrum tap."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Feature-flag contract (docs/PORT_SPEC.md "Feature flags"). Cargo has no
+# workspace-level [features], so the four port-wide flags are declared on the
+# crate that owns the gated backends and forwarded by dependents later.
+#
+# Exclusive/bit-perfect output per OS (blueprint ch. 12):
+#   exclusive-win   -> WASAPI-exclusive        (Windows only)
+#   exclusive-linux -> ALSA hw: devices        (Linux only)
+# Userspace USB Audio Class driver — experimental, Windows + Linux only;
+# not viable on macOS (IOUSBHost arbitration — documented limitation).
+#   usb-uac         -> rusb userspace UAC driver
+# Optional video decode backend (blueprint ch. 17, Q5); symphonia stays the
+# default audio path either way:
+#   video           -> ffmpeg-next exotic-codec backend
+[features]
+exclusive-win = ["dep:wasapi"]
+exclusive-linux = ["dep:alsa"]
+usb-uac = ["dep:rusb"]
+video = ["dep:ffmpeg-next"]
+
+[dependencies]
+# Nothing compiled by default in Phase 01; the four optional backends above
+# are the exception so the flag contract exists from day one.
+wasapi = { workspace = true, optional = true }
+alsa = { workspace = true, optional = true }
+rusb = { workspace = true, optional = true }
+ffmpeg-next = { workspace = true, optional = true }
+

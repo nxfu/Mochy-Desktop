@@ -1,0 +1,219 @@
+# Mochy Music for Desktop — Cargo workspace root.
+#
+# Layout contract: docs/PORT_SPEC.md ("Workspace layout", 19 crates).
+# Full blueprint: docs/BLUEPRINT.pdf, ch. 9 (Table 22).
+# Crate seams are FIXED — do not add, remove, rename or repurpose members
+# without recording the decision in docs/HANDOFF.md.
+#
+# Phase 01: member crates are dependency-free bootstrap stubs; external
+# versions are pinned here once so every later phase inherits them.
+[workspace]
+resolver = "2"
+members = [
+    "mochy",             # bin: GPUI application shell
+    "mochy-ui-kit",      # lib: design system / components
+    "mochy-ui-browse",   # lib: home/search/library/... screens
+    "mochy-ui-player",   # lib: player dock / lyrics / queue
+    "mochy-ui-settings", # lib: settings / AudioLab / setup wizard
+    "mochy-player",      # lib: PlayerCore + QueueMachine
+    "mochy-audio",       # lib: decode + DSP graph + output router
+    "mochy-downloads",   # lib: download jobs + export remux
+    "mochy-lyrics",      # lib: lyrics fan-out/grading + NLP
+    "mochy-importer",    # lib: account/link/CSV/local import
+    "mochy-modules",     # lib: runtime module + skin system
+    "mochy-link",        # lib: phone-TV link protocol
+    "mochy-integrations",# lib: Discord/scrobble/cast/DLNA/canvas
+    "mochy-innertube",   # lib: YouTube InnerTube client
+    "mochy-db",          # lib: schema v45 mirror + repositories
+    "mochy-config",      # lib: settings registry
+    "mochy-vault",       # lib: keyring-backed secrets
+    "mochy-media",       # lib: media session / tray / notifications
+    "mochy-net",         # lib: HTTP factory + cache + offline
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# Plain GPLv3 text (no "or later" grant) — see LICENSE; recorded in HANDOFF ## Phase 01.
+license = "GPL-3.0-only"
+repository = "https://github.com/nxfu/Mochy-Desktop"
+rust-version = "1.100"
+publish = false
+
+# ---------------------------------------------------------------------------
+# Shared dependency pins.
+#
+# Every version was verified against crates.io on 2026-11-20 (Phase 01;
+# see docs/HANDOFF.md ## Phase 01 "Decisions" for the full table). Where the
+# blueprint (docs/BLUEPRINT.pdf, ch. 13 Table 25) pinned a version, the live
+# registry agreed — deviations are recorded in HANDOFF.
+#
+# Members reference these via `foo = { workspace = true }`. Phases wire them
+# in as they implement; nothing below is compiled unless a member uses it.
+# ---------------------------------------------------------------------------
+[workspace.dependencies]
+# --- UI framework -------------------------------------------------------------
+# GPUI is pre-1.0: pin EXACT versions (blueprint risk R2). gpui-component is
+# the GPUI Kit component library (75+ components, AccessKit, virtualized
+# tables, dock layout).
+gpui = "0.2.2"
+gpui-component = "0.10.0"
+
+# --- Async runtime ------------------------------------------------------------
+tokio = { version = "1.54.1", features = [
+    "rt-multi-thread",
+    "macros",
+    "sync",
+    "time",
+    "fs",
+    "io-util",
+    "net",
+    "process",
+    "signal",
+] }
+
+# --- HTTP / networking ---------------------------------------------------------
+# Blueprint ch. 13: rustls (never native-tls), socks+cookies+brotli; reqwest
+# 0.13 makes HTTP/2 and system-proxy default-capable. Feature names verified
+# against crates.io (0.13 renamed rustls-tls -> rustls).
+reqwest = { version = "0.13.5", default-features = false, features = [
+    "rustls",
+    "socks",
+    "cookies",
+    "brotli",
+    "gzip",
+    "http2",
+    "json",
+    "stream",
+    "system-proxy",
+] }
+# Link protocol + updater endpoints (blueprint ch. 13: mdns-sd + axum; the
+# phone-TV link needs routing + websockets on the LAN).
+axum = "0.8.9"
+mdns-sd = "0.22.0"
+# Discord gateway websocket (own client; discord-sdk is dead — blueprint ch. 13).
+tokio-tungstenite = "0.30.0"
+
+# --- Serialization --------------------------------------------------------------
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+
+# --- Database --------------------------------------------------------------------
+# Single-writer desktop pattern behind a DB actor (blueprint ch. 9.2/13).
+# tokio-rusqlite's "bundled" forwards to the same bundled SQLite as rusqlite.
+rusqlite = { version = "0.43.0", features = ["bundled"] }
+tokio-rusqlite = { version = "0.10.0", features = ["bundled"] }
+
+# --- Secrets ------------------------------------------------------------------------
+# v4 facade over Windows Credential Manager / Secret Service / macOS Keychain.
+keyring = "4.2.0"
+
+# --- Audio I/O, decode and DSP ---------------------------------------------------------
+# cpal 0.18 has the native PipeWire host; exclusive modes are per-OS (below).
+cpal = "0.18.2"
+# Codec/demux set for YouTube WebM/MP4 (Opus via adapter + AAC), downloaded
+# Ogg-Opus, Monochrome FLAC, local ALAC/MP3/WAV/PCM; opt-simd = tuned build.
+symphonia = { version = "0.6.1", features = [
+    "aac",
+    "alac",
+    "flac",
+    "isomp4",
+    "mkv",
+    "mp3",
+    "ogg",
+    "pcm",
+    "vorbis",
+    "wav",
+    "opt-simd",
+] }
+# libopus adapter for symphonia (no pure-Rust Opus decoder — blueprint ch. 13).
+symphonia-adapter-libopus = "0.3.0"
+# Analyzers (crossmix, lyric auto-sync, spectrum) and rate conversion.
+rustfft = "6.4.1"
+rubato = "5.1.0"
+
+# Feature-gated audio backends (contract: docs/PORT_SPEC.md "Feature flags").
+# Declared on the mochy-audio crate; optionality is set there
+# (`alsa = { workspace = true, optional = true }`) because Cargo does not
+# allow `optional` inside this table.
+#
+# PIN CONSTRAINT (verified 2026-11-20): cpal 0.18.2 itself depends on
+# alsa ^0.11 (alsa-sys ^0.4). The standalone `alsa` crate must stay on the
+# SAME alsa/alsa-sys line or the build breaks with a `links = "alsa"`
+# conflict (alsa 0.12 uses alsa-sys ^0.6). Re-check this pin whenever cpal
+# is upgraded.
+wasapi = "0.27.0"      # `exclusive-win` (Windows)
+alsa = "0.11.0"        # `exclusive-linux` (Linux; keep in sync with cpal!)
+rusb = "0.9.4"         # `usb-uac` (Win/Linux experimental)
+ffmpeg-next = "9.1.0"  # `video` (optional backend)
+
+# --- Desktop integration ------------------------------------------------------------
+tray-icon = "0.26.1"
+muda = "0.21.2"
+rfd = "0.18.0"
+open = "5.4.5"
+notify-rust = "4.19.0"                 # Linux (D-Bus) notifications
+tauri-winrt-notification = "0.8.1"     # Windows toast notifications
+mac-notification-sys = "0.6.15"        # macOS Notification Center
+interprocess = "2.4.9"                 # single-instance + deep-link hand-off
+# Media sessions: MPRIS on Linux (mpris-server over zbus), SMTC on Windows
+# (WinRT windows crate), MediaPlayer framework on macOS (blueprint ch. 12).
+zbus = "6.4.0"
+mpris-server = "0.11.0"
+windows = "0.62.2"
+
+# --- Webview / JS engine / PO tokens ----------------------------------------------------
+# wry exposes cookies_for_url incl. HttpOnly on all three desktop backends —
+# the load-bearing piece for login + import capture (blueprint ch. 4.1/13).
+wry = "0.57.3"
+# QuickJS-NG bindings for the EJS n-solver and signature-cipher code
+# (replaces the Android WebViews; features selected by Phase 08).
+rquickjs = "0.14.0"
+# In-process BotGuard PO-token minting (replaces the po_token.html WebView).
+rustypipe-botguard = "0.1.2"
+
+# --- Images and color ---------------------------------------------------------------------
+image = "0.25.10"
+resvg = "0.50.0"
+dominant_color = "0.4.0" # old-but-done (blueprint ch. 13)
+palette = "0.7.7"
+
+# --- Caches -----------------------------------------------------------------------------------
+moka = { version = "0.12.16", features = ["sync", "future"] } # TinyLFU
+lru = "0.19.0"
+
+# --- Errors and logging ---------------------------------------------------------------------------
+thiserror = "2.0.21"
+anyhow = "1.0.104"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+
+# --- i18n -----------------------------------------------------------------------------------------------
+# Harvest the upstream values-* corpora (55 locales) to YAML at build time.
+rust-i18n = "4.2.4"
+
+# --- Metadata / lyrics NLP ---------------------------------------------------------------------------------
+lofty = "0.25.5"  # replaces MediaMetadataRetriever for local import + tagging
+# Japanese tokenizer for lyrics romanization (kuromoji equivalent, blueprint
+# ch. 13). DEVIATION from the blueprint's "lindera (ipadic)" pick, verified
+# 2026-11-20: every lindera line (3.x-6.x, via lindera-dictionary) requires
+# encoding_rs ^0.8.35, while rustypipe-botguard 0.1.2 -> deno_web 0.218.0
+# pins encoding_rs =0.8.33 exactly — the two can never coexist in one Cargo
+# graph, and both are needed by the app (PO tokens + lyrics NLP). vibrato is
+# the Viterbi tokenizer by the same ecosystem (6 pure-Rust deps, no
+# encoding_rs); Phase 18 pairs it with an IPADIC dictionary build. If
+# rustypipe-botguard ever relaxes the deno_web pin, lindera can be revisited.
+vibrato = "0.5.3"
+# Chinese romanization (tinypinyin equivalent).
+pinyin = "0.11.0"
+
+# --- CLI ----------------------------------------------------------------------------------------------------------
+clap = { version = "4.6.9", features = ["derive"] }
+
+# --- Testing ----------------------------------------------------------------------------------------------------------
+proptest = "1.12.0" # queue state-machine property tests (blueprint ch. 15)
+
+[profile.release]
+# A music player wants predictable latency over last-percent PGO; standard
+# release profile, tuned when Phase 11/19 measure real DSP load.
+lto = "thin"

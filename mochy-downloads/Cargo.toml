@@ -1,0 +1,14 @@
+# mochy-downloads — Job queue, itag-stability resume, auto-download rules, export remux/tagging
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): DownloadUtil + ExoDownloadService + AutoDownloads + DownloadExporter + remux (WebM->Ogg-Opus, MP4->FLAC) + StoragePlaces/StorageMover
+[package]
+name = "mochy-downloads"
+description = "Job queue, itag-stability resume, auto-download rules, export remux/tagging."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

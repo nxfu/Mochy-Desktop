@@ -1,0 +1,14 @@
+# mochy-player — PlayerCore mixer + voices, QueueMachine, Transport fades, ErrorPolicy, sleep timer, SongTuning
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): MusicService.kt logic (5,667 lines decomposed) + playback/queues (7 queue types) + SleepTimer + SongTuning + PlayerConnection facade
+[package]
+name = "mochy-player"
+description = "PlayerCore mixer + voices, QueueMachine, Transport fades, ErrorPolicy, sleep timer, SongTuning."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

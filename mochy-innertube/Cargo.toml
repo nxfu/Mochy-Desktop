@@ -1,0 +1,14 @@
+# mochy-innertube — 18-client registry, endpoints, pagination, auth headers, PO tokens, EJS n-solver, stream-format ranking
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): providers/innertube (106 files: InnerTube.kt transport, YouTube.kt 1,814-line facade, models/, pages/ 21 parsers + 2 glue) + app utils/YTPlayerUtils.kt (1,241 lines) + potoken/ + cipher/ + sabr/
+[package]
+name = "mochy-innertube"
+description = "18-client registry, endpoints, pagination, auth headers, PO tokens, EJS n-solver, stream-format ranking."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

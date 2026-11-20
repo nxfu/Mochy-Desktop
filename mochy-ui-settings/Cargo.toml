@@ -1,0 +1,14 @@
+# mochy-ui-settings — Registry-driven settings UI, AudioLab pages, setup wizard, diagnostics
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): ui/screens/settings (72 files) + audiolab/ + equalizer/ + setup/ (17 files) + devspace/ diagnostics screens
+[package]
+name = "mochy-ui-settings"
+description = "Registry-driven settings UI, AudioLab pages, setup wizard, diagnostics."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

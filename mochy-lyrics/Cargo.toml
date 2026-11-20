@@ -1,0 +1,14 @@
+# mochy-lyrics — Provider trait + fan-out/grading, parsers, romanization, translation, auto-sync DSP
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): lyrics/ (34 files: LyricsHelper grading, LyricsUtils, YouTube*Provider, auto-sync) + songedit lyric-file formats (.krc/.qrc/.yrc/ass/srt/lrc/ttml)
+[package]
+name = "mochy-lyrics"
+description = "Provider trait + fan-out/grading, parsers, romanization, translation, auto-sync DSP."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

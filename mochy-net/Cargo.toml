@@ -1,0 +1,14 @@
+# mochy-net — reqwest factory with proxy/DNS/IP-version policy, response cache, offline flag
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): network utils: AppProxy (SOCKS/HTTP + auth), IpVersion pinning, okhttp-dnsoverhttps (DoH), OfflineMode/DataSaver gates, 50 MB disk cache
+[package]
+name = "mochy-net"
+description = "reqwest factory with proxy/DNS/IP-version policy, response cache, offline flag."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

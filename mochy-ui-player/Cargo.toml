@@ -1,0 +1,14 @@
+# mochy-ui-player — Player dock, lyrics page, queue page, style platform, share posters
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): ui/player (186 files): BottomSheetPlayer, LyricsScreen + LyricsGlowLine, QueueScreen, styles/ (11 player styles), ipod/, bedside/, studio/, share/
+[package]
+name = "mochy-ui-player"
+description = "Player dock, lyrics page, queue page, style platform, share posters."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

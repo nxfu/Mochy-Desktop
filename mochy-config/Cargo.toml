@@ -1,0 +1,14 @@
+# mochy-config — Settings registry (~400 keys with defaults + search metadata), audio-lab store, atomic persistence, live watchers
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): constants/PreferenceKeys.kt (1,399 lines; 398 static keys + per-style key factory) + utils/DataStore + 22 SharedPreferences stores + eq/AudioLabStore
+[package]
+name = "mochy-config"
+description = "Settings registry (~400 keys with defaults + search metadata), audio-lab store, atomic persistence, live watchers."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

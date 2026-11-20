@@ -1,0 +1,14 @@
+# mochy-ui-kit — Theme tokens + Inter, list/grid items, sheets/popovers/context menus, toasts, shimmer, glass layer, seek bars, chips, index rail
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): ui/component (105 files) + ui/menu (26 files) + ui/theme (8 files)
+[package]
+name = "mochy-ui-kit"
+description = "Theme tokens + Inter, list/grid items, sheets/popovers/context menus, toasts, shimmer, glass layer, seek bars, chips, index rail."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

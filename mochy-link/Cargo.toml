@@ -1,0 +1,14 @@
+# mochy-link — Pairing, LAN server/client, remote control, TV profiles - byte-compatible protocol
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): link/ (26 files: mDNS advertising, ECDH secp256r1 pairing + 6-digit code, HMAC HTTP/1.1 with nonces, gzipped SQLite snapshots, ranged file streaming)
+[package]
+name = "mochy-link"
+description = "Pairing, LAN server/client, remote control, TV profiles - byte-compatible protocol."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

@@ -1,0 +1,14 @@
+# mochy-modules — Module trait + registry, JSON web/local modules, skin DSL parser, route takeover model
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): modules/api + modules/bridge (MODULE_API_VERSION 3) + app modules/ (29 files: ModuleRegistry, SourceModules routing, skin DSL 14 files, takeovers)
+[package]
+name = "mochy-modules"
+description = "Module trait + registry, JSON web/local modules, skin DSL parser, route takeover model."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

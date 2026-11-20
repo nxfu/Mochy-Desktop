@@ -1,0 +1,14 @@
+# mochy-integrations — Discord gateway, scrobbler, Chromecast CASTv2, DLNA, canvas providers, Shazam, Wikipedia
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): discord/ (17 files) + scrobble/ (5) + recognition/ (4) + foss cast/ (CASTv2 TLS + protobuf frames, DLNA SOAP + SSDP) + providers/{lastfm,canvas,applecanvas,artistvideo,shazamkit,wikipedia,genius}
+[package]
+name = "mochy-integrations"
+description = "Discord gateway, scrobbler, Chromecast CASTv2, DLNA, canvas providers, Shazam, Wikipedia."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

@@ -1,0 +1,14 @@
+# mochy-ui-browse — Home/search/library/album/artist/playlist/stats screens and their state entities
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): ui/screens minus settings (HomeScreen, SearchScreen, library/, artist/, playlist/, recap/, genre + browse screens, SectionDetailScreen, HistoryScreen)
+[package]
+name = "mochy-ui-browse"
+description = "Home/search/library/album/artist/playlist/stats screens and their state entities."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

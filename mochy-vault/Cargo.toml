@@ -1,0 +1,14 @@
+# mochy-vault — keyring-backed secret store (12 keys)
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): the Android Keystore-sealed secret sub-store (innertube cookie, visitor and data-sync ids, Discord tokens, Last.fm/Libre.fm sessions, DeepL and OpenRouter keys, Monochrome token, Turnstile bypass, proxy password)
+[package]
+name = "mochy-vault"
+description = "keyring-backed secret store (12 keys)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+

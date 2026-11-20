@@ -1,0 +1,14 @@
+# mochy-db — rusqlite schema v45 mirror, repositories, invalidation events, Android-DB importer
+#
+# Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
+# Upstream source (Android, pin bde01cb4): db/ (39 files: 24 entities, 3 views, mega-DAO 2,131 lines, 14 hand-written migrations) + di/AppModule DB + app/schemas/ lineage
+[package]
+name = "mochy-db"
+description = "rusqlite schema v45 mirror, repositories, invalidation events, Android-DB importer."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
