@@ -97,6 +97,15 @@ tokio-tungstenite = "0.30.0"
 # --- Serialization --------------------------------------------------------------
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
+# TOML backup serializer for mochy-config (blueprint ch. 9: the settings!
+# macro generates "a JSON/TOML serializer"). Verified on crates.io
+# 2026-11-20: toml 1.2.1 is the current release line (Phase 02 addition).
+toml = "1.2.1"
+# Identifier concatenation inside the mochy-config `settings!` macro
+# (getter/setter generation: `set_<RowName>`). dtolnay's paste is the
+# standard, dependency-free proc-macro for this (Phase 02 addition;
+# verified on crates.io 2026-11-20: 1.0.15 current).
+paste = "1.0.15"
 
 # --- Database --------------------------------------------------------------------
 # Single-writer desktop pattern behind a DB actor (blueprint ch. 9.2/13).

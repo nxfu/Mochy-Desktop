@@ -12,3 +12,15 @@ repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[dependencies]
+# Domain crate: serde + thiserror + tracing only — no GPUI, no tokio
+# (PORT_SPEC §3.1 layering rules).
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+# Backup serializer for the settings file (blueprint ch. 9: "JSON/TOML
+# serializer"); added to the workspace table in Phase 02.
+toml = { workspace = true }
+# `settings!` macro identifier concatenation (set_<Row> accessors).
+paste = { workspace = true }
