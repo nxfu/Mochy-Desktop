@@ -35,11 +35,11 @@ M6 Modules + import (21–22) · M7 Integrations (23) · M8 Polish + ship (24–
 - [x] Settings round-trip test; TransferArchive import (typed settings.json + preferences_pb fallback); HANDOFF entry
 
 ### Phase 03 — Database (mochy-db)
-- [ ] Schema v45 mirror: 24 tables + 3 views, identical column names; PRAGMA user_version = 1 at v45 baseline DDL
-- [ ] Repositories + table-watcher invalidation events (Room Flow replacement)
-- [ ] Android `mochy.db` importer (v35–45) incl. event-timestamp normalization decision (PORT_SPEC: normalize to UTC + zone record)
-- [ ] Media3 `exoplayer_internal.db` download-index read path
-- [ ] Migration tests on fixture `.db` files; HANDOFF entry
+- [x] Schema v45 mirror: 24 tables + 3 views, identical column names; PRAGMA user_version = 1 at v45 baseline DDL
+- [x] Repositories + table-watcher invalidation events (Room Flow replacement)
+- [x] Android `mochy.db` importer (v35–45) incl. event-timestamp normalization decision (PORT_SPEC: normalize to UTC + zone record)
+- [x] Media3 `exoplayer_internal.db` download-index read path
+- [x] Migration tests on fixture `.db` files; HANDOFF entry
 
 ### Phase 04 — App shell skeleton (mochy) — CP M0
 - [ ] GPUI window set plan (main window first), services builder, typed AppContext as GPUI Global

@@ -357,3 +357,205 @@ Phase 05; see Deviations).
    (ProxyEnabled/Url/Type/Username + vault PasswordKey) into
    `ClientSpec::proxy` — exactly App.kt:187-235's observeSettingsChanges
    loop, one typed subscription instead of nine flows.
+
+## Phase 03 — 2026-11-20
+
+**Status:** done (all acceptance criteria met; artifacts emitted)
+
+**Task:** mochy-db — schema v45 mirror, repositories, invalidation, Android
+importer (Milestone M0, part 3).
+
+**Commits:** `phase-03(db)` schema/actor → `phase-03(db)` queries/repos →
+`phase-03(importer)` → `phase-03(tests)` → `phase-03(docs)` on branch
+`phase-03` cut from `origin/main` (base `e23ff1a`).
+
+### Harvest summary (acceptance numbers)
+
+- **Schema: 24 tables + 3 views, 167 columns, `user_version = 1`, no
+  `room_master_table`.** The schema-report test prints the full catalog
+  (table → column count) plus the v34→v45 delta report.
+- **The v34-vs-v45 column deltas found** (this is the "print a diff
+  report" acceptance): v34 JSON carries 17 tables; the seven post-v34
+  tables are `playlist_event` (MIGRATION_35_36), `imported_song`
+  (38→39), `import_session` + `import_session_song` + `imported_playlist`
+  (39→40), `imported_playlist_track` (40→41), `song_edit` (42→43); column
+  additions are `song.localUri` (36→37), `playlist.description` (37→38),
+  `imported_playlist.remoteId/remoteUrl/lastSyncedAt` (40→41),
+  `song.addedByLike` (41→42), `song.genre` (43→44),
+  `imported_playlist.authorName/authorAvatarUrl/authorUrl` (44→45). The
+  mirror's columns match the v34 JSON exactly (name + affinity + notNull +
+  default) and the delta equals that documented set (asserted, not just
+  printed).
+- **DDL source decisions:** ≤v34 columns/types/defaults/index DDL from
+  `app/schemas/com.mochyy.mochymusic.db.InternalDatabase/34.json` (the
+  last export; `exportSchema = false` since); v35→v45 additions from the
+  hand-written migration `db.execSQL` strings verbatim; fresh-schema
+  semantics (column order, DEFAULT presence) from the current
+  `db/entities/*.kt` declarations. One documented divergence:
+  `playlist.description` has `DEFAULT NULL` when migration-added but no
+  DEFAULT in a fresh Room v45 DDL (the entity declares none) — the
+  mirror follows the entity; behaviorally identical (nullable column).
+- **`mochy-db` test count: 33** (7 unit + 3 schema-report + 14 repository
+  + 5 watcher + 4 importer); workspace total 109, all green.
+
+### Decisions
+
+1. **Timestamp normalization scope (Q4 interpretation).** The task named
+   `event.timestamp`, but upstream `Converters.kt` stamps EVERY
+   `LocalDateTime` column wall-clock-as-UTC (`dateToTimestamp` through
+   `ZoneOffset.UTC` + `LocalDateTime.now()` write sites), and the desktop
+   stores true UTC (blueprint ch. 7.2 "the port normalizes on import and
+   stores UTC" — otherwise Phase 14's UTC writes would mix conventions and
+   `likedDate > :since` comparisons would break). The importer therefore
+   shifts all 22 converter-stamped columns once
+   (`WALL_CLOCK_AS_UTC_COLUMNS` in `importer/event_time.rs`) — still ONE
+   transform conceptually — and excludes the one column that is already
+   true UTC upstream (`speed_dial_item.createDate` =
+   `System.currentTimeMillis()`). A single fixed offset is recorded (the
+   zone at import time); per-instant DST history is unknowable from the
+   data — worst case 1 hour, never a recap-day boundary shift.
+2. **The import timezone record lives in a namespaced `_mochy_meta`
+   table** (`key TEXT PRIMARY KEY, value TEXT`), created only by the
+   importer. Fresh databases stay a pure mirror (24 tables + 3 views +
+   indices, nothing else — the schema test asserts it). The record holds
+   source version, offset minutes + label, shift ms, normalized-cell
+   count, and the convention string, so recap/stats know events are UTC.
+   `read_import_meta()` is the reader.
+3. **Importer version gate: `user_version` 35..=45.** Below 35 there is no
+   surviving migration path (verified fact #6) — Android itself
+   destructively wiped those databases, so importing them would be
+   reading garbage; the importer refuses with a typed error. The copy is
+   column-intersection driven, so ANY intermediate shape in range works
+   (a v35 source lacks the 7 post-v34 tables → zero-row reports with
+   filled-default column lists; a v45 source has everything). v35's
+   schema equals v34's (no `MIGRATION_34_35` exists — version bump only),
+   which is how the v35 fixture is built (34.json createSql executed
+   verbatim).
+4. **Fixture strategy (HANDOFF Phase 02 open point #4): harvested DDL, not
+   device dumps.** The committed `tests/data/room_schema_v34.json` IS the
+   upstream export; fixtures are built by executing its `createSql`
+   statements (tables, indices, views) + the migration DDL for v45. This
+   is reproducible, reviewable, and license-clean; recorded device dumps
+   would embed private data and bitrot. Real-device validation remains a
+   Phase 22/25 checkpoint item (parity harness).
+5. **Atomic wholesale import, no merge.** Upstream backup/restore replaces
+   the library wholesale (BackupRestoreViewModel copies whole files); the
+   importer matches: one transaction (`BEGIN IMMEDIATE` … `COMMIT`, with
+   `foreign_keys` toggled OFF outside it — SQLite ignores the pragma
+   mid-transaction), rollback on any failure, `foreign_key_check`
+   audited after commit and reported (not fatal: `import_*` orphans are
+   by design). Re-import/merge is Phase 22 TransferArchive territory.
+6. **`Db::write_raw`** is the documented escape hatch for bulk tools: same
+   actor serialization, no wrapping transaction, closure manages
+   BEGIN/COMMIT + pragmas. Repositories use `Db::write` (transaction +
+   post-commit invalidation). Invalidation fires ONLY after commit — an
+   aborted transaction wakes nobody (Room behaves the same).
+7. **tokio in mochy-db's API (PORT_SPEC §3.1 tension, task-mandated).**
+   The Phase 03 task pins "command channel over tokio-rusqlite"; the
+   actor's write futures are runtime-agnostic (dedicated std thread +
+   crossbeam in, oneshot out — no timers/IO), so GPUI's executor can
+   await them directly. Reads are sync (`Db::read`, pooled). The crate
+   exposes no GPUI and no platform-specific code; `tokio::sync::broadcast`
+   (the invalidation bus) is the only other tokio type and it is wrapped
+   behind `InvalidationHandle`/`watch()`.
+8. **Watcher API shape:** the raw broadcast (`subscribe()` →
+   `InvalidationHandle::recv(tables)` filters by table set, lag coalesced)
+   plus `watch(tables)` → `(std_mpsc Receiver, WatchGuard)` — the same
+   idiom as mochy-config's settings watchers (Phase 02's uniformity
+   request). The mpsc fan-out runs synchronously in `send()` with
+   `try_send` (a stuck consumer can never block the writer); dead
+   receivers are reaped on send.
+9. **Queue reconstruction basis:** most-recent DISTINCT songs from the
+   event table (timestamp DESC, cap 50 — `RECONSTRUCTION_LIMIT`), current
+   = head, paused = true (upstream restores with `playWhenReady = false`),
+   each entry carrying artists (position order) + the cached format row
+   so the first start comes from cache. Fallback with no history: newest
+   library songs. Shuffle order is lost — recorded on the
+   `QueueReconstruction` (serde) record for Phase 10.
+10. **Downloads seed:** Media3 1.7.1 `DefaultDownloadIndex` schema
+    (`ExoPlayerDownloads` in `exoplayer_internal.db` — table name verified
+    from the androidx/media source: `TABLE_PREFIX + "Downloads"` with the
+    default empty name; state constants QUEUED=0/STOPPED=1/DOWNLOADING=2/
+    COMPLETED=3/FAILED=4/REMOVING=5/RESTARTING=7). Completed rows mark
+    `song.isDownloaded/dateDownload` exactly like the
+    `onDownloadChanged` listener; STOPPED/REMOVING/FAILED clear it;
+    in-flight states stay for Phase 15's job queue, which also receives
+    the full seed (bytes, content length, `custom_cache_key`, and the
+    UTF-8 title from the request `data` blob —
+    `DownloadRequest.Builder(songId, songId.toUri())
+    .setCustomCacheKey(songId).setData(title.toByteArray())`,
+    DownloadUtil.kt:477-480). `dateDownload` comes from the index's
+    true-UTC `update_time_ms` (upstream stamps wall-clock
+    `LocalDateTime.now()`; the true instant is unrecoverable — recorded
+    as the deviation it is).
+11. **Entity state machines are persistence-pure.** `SongEntity.toggleLike`
+    / `toggleLibrary`, artist/album/playlist bookmark toggles are ported
+    as exact row-update state machines (cited), and every one documents
+    the Phase 14 SongService hook for the YouTube call that upstream
+    fired from inside the entity. Repositories never do IO beyond SQLite.
+12. **Sort behavior:** SQL ORDER BY matches the DAO text; the Kotlin-side
+    `Collator` re-sorts (NAME/ARTIST, PRIMARY strength) are a UI-layer
+    concern in the port (mochy-ui-kit's script-aware index rail owns
+    collation) — the DB returns the base feed, exactly like
+    `songsByRowIdAsc` did before Kotlin re-sorted. The upstream
+    `playlist_song_map_preview` view is `WHERE position <= 3` VERBATIM —
+    with 0-based positions that yields up to FOUR preview thumbnails; the
+    port keeps the exact semantics (a test pins it).
+
+### Deviations
+
+- **`_mochy_meta`** — a 25th, namespaced table on imported databases only
+  (the timezone record). Required by "record the import timezone"; fresh
+  DBs remain the pure 24+3 mirror.
+- **Normalize-all-converter-columns** instead of only `event.timestamp`
+  (Decision 1) — the task's transform list is honored in spirit and
+  letter for `event.timestamp`; the extension is what keeps the DB
+  self-consistent.
+- **Collation deferred to UI** (Decision 12) and **album-artist junction
+  unordered** (Room emits no ORDER BY for `AlbumArtistMap`; neither do
+  we).
+- **tokio-rusqlite in the crate's async surface** (Decision 7) — mandated
+  by the task prompt over PORT_SPEC §3.1's "where avoidable".
+- **No other deviations.** The 3 views exist with upstream SQL text even
+  though consuming queries inline the ORDER BY (parity + Android-import
+  compatibility of `sqlite_master`).
+
+### Verification (acceptance)
+
+- `cargo test -p mochy-db`: **33/33 green**; the schema-report test
+  prints 24 tables + 3 views with column counts (167 columns) and the
+  v34→v45 delta.
+- The importer test produces a **normalized event table** (wall-clock
+  05:30-IST stored → true UTC asserted cell-by-cell, plus likedDate/
+  inLibrary/lastUpdateTime shifted, `speed_dial_item.createDate`
+  untouched), a **queue-reconstruction record** (paused, current song,
+  artists + format, blob-present + shuffle-lost flags, JSON round-trip),
+  and a **downloads seed** (3 entries, 2 completed applied, cache key +
+  title verified) — all three transforms asserted end-to-end on both a
+  v35 and a v45 Android-shaped fixture, plus a Media3 fixture.
+- `cargo test --workspace`: 109 green (Phase 01/02 suites untouched).
+  `cargo fmt --all --check` clean; `cargo clippy --workspace
+  --all-targets -- -D warnings`: 0 errors.
+
+### Next steps (Phase 04 — app shell skeleton, CP M0)
+
+1. Read PORT_SPEC §3 row `mochy`, §10 Phase 04, blueprint ch. 10.1; the
+   `mochy` bin's stub `fn main` becomes the GPUI `Application::new()`
+   shell with the main window, sidebar + Route enum, per-tab stacks
+   (back = pop within tab; re-tap = pop to root + scroll top), and theme
+   tokens (dark-only, chrome `0x131313`, hairline + grain, Inter seven
+   weights, -0.05em semibold).
+2. Services builder → typed `AppContext` as a GPUI Global, following
+   Phase 02's wiring list: `SettingsStore::load(config_dir/settings.json)`,
+   mirror `offlineMode` into `mochy_net::set_offline`, proxy prefs
+   (ProxyEnabled/Url/Type/Username + vault PasswordKey) into
+   `ClientSpec::proxy` (App.kt:187-235 semantics), and now
+   `Db::open(data_dir/mochy.db)` + `Repositories::new` with watch
+   bridges (`Db::watch` → `cx.spawn` re-runs).
+3. Register the `mood_and_genres` route properly (PORT_SPEC §4.1).
+4. M0 checkpoint: CI green on 3 OS; an imported DB opens (the Phase 03
+   importer's output is the fixture); window with sidebar + routing +
+   tokens; HANDOFF entry + PROGRESS ticks.
+5. The Linux CI leg will need GPUI's system libraries once `mochy` gains
+   its gpui dep (the ci.yml comment lists them) — wire that in this
+   phase, not later.
