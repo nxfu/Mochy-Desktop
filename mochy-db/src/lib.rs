@@ -41,6 +41,7 @@
 pub mod db;
 pub mod entities;
 pub mod error;
+pub mod importer;
 pub mod queries;
 pub mod repo;
 pub mod schema;
