@@ -111,19 +111,22 @@ Work".)*
 ## M2 — Audio engine
 
 ### Phase 09 — Decode pipeline (mochy-audio)
-- [ ] symphonia decode (Opus via adapter, AAC/MP4, WebM/MKV, Ogg, FLAC, MP3, ALAC, WAV/PCM)
-- [ ] Ranged byte cache (512 KB subranges, LRU), itag/content-length stale-splice eviction
-- [ ] Encoder-delay/gapless sample accounting for MP4/AAC; HANDOFF entry
+*(Landed by the phase-08 prompt's commits — the prompt's Phase 08
+covers the roadmap's Phase 09 + Phase 10's engine half + Phase 11's
+router; see HANDOFF ## Phase 08 for the mapping and the numbers.)*
+- [x] symphonia decode (Opus via adapter, AAC/MP4, WebM/MKV, Ogg, FLAC, MP3, ALAC, WAV/PCM) (`mochy-audio/src/decode/` — TrackDecoder over the pinned symphonia 0.6.1 set, Opus through symphonia-adapter-libopus; blocks/seek/first-sample tested)
+- [x] Ranged byte cache (512 KB subranges, LRU), itag/content-length stale-splice eviction (`mochy-audio/src/bytecache.rs` + `source.rs` — the RangedMediaSource the decoder reads through)
+- [x] Encoder-delay/gapless sample accounting for MP4/AAC; HANDOFF entry (`mochy-audio/src/decode/gapless.rs` — the moov/elst/mdhd walk with the priming/padding trim; WAV carries no trim, pinned by test)
 
 ### Phase 10 — Player core + queue (mochy-player)
-- [ ] PlayerCore: one output stream, N mixer voices, gain automation (equal-power + s-curve by played position), PlaybackClock
+- [x] PlayerCore: one output stream, N mixer voices, gain automation (equal-power + s-curve by played position), PlaybackClock (the phase-08 prompt's engine half: `ring`/`mailbox`/`fade`/`clock`/`mixer`/`core` — the lock-free SPSC rings, atomic param snapshots, PlaybackClock with snap/pull smoothing read only inside paint, sum-then-limit mixer with the underrun-silence policy, decode tasks with fill hysteresis, hotplug resume-at-position; QueueMachine/ErrorPolicy/SleepTimer/SongTuning stay Phase 10)
 - [ ] QueueMachine: 7 queue types, preload-first instant start, manual anchoring, runway (≥5 upcoming, generation token), shuffle surgery, start-radio tail swap, automix fallback chain
 - [ ] ErrorPolicy enum taxonomy (offline skip, provider fallback, 403 refresh, 416 retry-at-position, backoff, countdown skip, circuit breaker)
 - [ ] Queue persistence (JSON snapshot, same triggers + fingerprint), sleep timer, SongTuning; property tests; HANDOFF entry
 
 ### Phase 11 — Output routing (mochy-audio/mochy-player) — CP M2
-- [ ] OutputRouter: shared cpal stream; WASAPI-exclusive (`exclusive-win`), ALSA `hw:` (`exclusive-linux`); exactness verified before use; mid-song fallback
-- [ ] Device enumeration + hotplug re-open at position; volume curve + duck setting
+- [x] OutputRouter: shared cpal stream; WASAPI-exclusive (`exclusive-win`), ALSA `hw:` (`exclusive-linux`); exactness verified before use; mid-song fallback (the phase-08 prompt's router half: `mochy-audio/src/output/` — cpal shared always on, the exclusive backends behind their features with the exclusive_pass.cpp bit-exactness gate before first use, refusal memory, same-format reuse, the EdgeConverter dither/pack edge, the published callback-to-output delay, and the rusb USB direct driver behind `usb-uac`)
+- [ ] Device enumeration + hotplug re-open at position; volume curve + duck setting (hotplug re-open-at-position is in — the router's event feed plus `PlayerCore::resume_at_position`, pinned by the hotplug test; OS-level enumeration and the volume curve land with Phase 14's desktop integration)
 - [ ] M2 checkpoint: radio plays end-to-end with queue semantics; HANDOFF entry
 
 ## M3 — Browse UI + session

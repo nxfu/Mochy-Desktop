@@ -322,6 +322,14 @@ dev-dependencies pin) and `cookie` 0.18 (the type wry's
 three are optional-dependency seams of the `login-window` feature except
 `url`, which the always-compiled parser uses.
 
+Phase 08 additions (recorded in HANDOFF ## Phase 08): `libc` 0.2 (the
+`usb-uac` driver's platform types — libusb1-sys's FFI takes
+`libc::timeval` for the event wait; already in the graph via
+cpal/alsa, pinned so mochy-audio does not float it). No other new
+pins: symphonia 0.6.1 + symphonia-adapter-libopus 0.3.0, cpal 0.18.2,
+wasapi 0.27.0, alsa 0.11.0 and rusb 0.9.4 were all pre-pinned and are
+now exercised by the decode/output/USB work.
+
 Licensing constraints that ride along: yt-dlp EJS bundle = Unlicense (safe to
 vendor); **meriyah/astring licenses need verification before vendoring**;
 symphonia = MPL-2.0 (used unmodified — no file-level disclosure triggered);

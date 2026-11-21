@@ -1624,3 +1624,197 @@ fmt clean, `clippy --workspace --all-targets -D warnings` clean.
    harvest, and the tier-2 loopback redirect against real Google —
    plus the `login-window` CI leg decision (system libs or
    maintainer-only).
+
+## Phase 08 — 2026-11-22
+
+**Status:** done (the prompt's full scope; two verification legs stay
+CI-side — see Deviations)
+
+**Task:** mochy-player/mochy-audio — the audio engine's first half
+(blueprint ch. 11, Table 23): mixer core, decode, output router,
+exclusive + USB modes, and the offline render harness, replacing the
+Android dual-ExoPlayer crossfade trick with the single-mixer
+architecture.
+
+Roadmap mapping (PROGRESS.md ticks under these): the prompt's Phase 08
+delivers the roadmap's **Phase 09** whole (decode pipeline), **Phase
+10's engine half** (PlayerCore/PlaybackClock — QueueMachine,
+ErrorPolicy, SleepTimer, SongTuning stay) and **Phase 11's router
+half** (OS device enumeration and the volume curve wait for Phase 14's
+desktop integration). Ten commits, `06035b4..ed349db`, on `phase-08`.
+
+### What landed
+
+- **`mochy-audio/src/sinc.rs` + `tests/sinc_resampler.rs`** — the 120 dB
+  polyphase Kaiser sinc resampler, ported FIRST per the prompt:
+  SincResampler.kt 1:1 (the shared window table, the fractional
+  carry, the two-half block protocol) with the four upstream
+  SincResamplerTest.kt tests transplanted verbatim (fixtures,
+  tolerances — 2.0 samples, 0.001 level, 0.01 dB, −110 dB alias
+  floor, 1e-6 delta — and their comment lines).
+- **`precision.rs` + `pcm.rs`** — the PrecisionSink decision table
+  (passthrough/dither/resample, the effect cap), readPlanes over every
+  PCM encoding, TPDF dither to 16-bit, and PassPcm's top-of-32-bits
+  packing with the whole-step exactness report.
+- **`bytecache.rs` + `source.rs`** — the ranged request cache (512 KB
+  subranges, LRU, 1024 MB default / −1 unlimited) with the Phase 06
+  stale-splice eviction (itag or content-length change → evict), and
+  the RangedMediaSource io::Read the decoder pulls through.
+- **`decode/`** — TrackDecoder over the pinned symphonia 0.6.1 set
+  (AAC native, Opus via symphonia-adapter-libopus; fdk-aac stays the
+  optional HE-AAC seam), plus `gapless.rs`: the moov/elst/mdhd walk
+  for MP4/AAC priming/padding with sample-accurate accounting — the
+  self-managed encoder delay symphonia's gapless metadata lacks.
+- **`mochy-player`** — the engine: lock-free SPSC rings (~1 s per
+  voice, generation protocol for seeks), the atomic param mailbox
+  (snapshots swapped between blocks), the equal-power/s-curve fade
+  curves by played position, PlaybackClock (sample counter → f64
+  position, snap-on-seek/pull-smoothing hooks, paint-only reads),
+  the sum-then-limit mixer with the underrun-silence policy, and
+  PlayerCore: decode tasks with fill hysteresis, crossfade-into,
+  resume-at-position. No locks on the render path anywhere.
+- **`output/`** — the OutputRouter: shared cpal always on; WASAPI
+  exclusive (`exclusive-win`) and ALSA `hw:` (`exclusive-linux`)
+  behind their features, each opened through the exclusive_pass.cpp
+  verification gate (sharing mode/rate/channels/format bit-exactness
+  BEFORE first use, refusal remembered per format, mid-song fallback
+  to shared); same-format reuse across songs; hotplug
+  (DeviceLost → re-open → resume at position); the measured
+  callback-to-output delay published per stream for Phase 20's
+  crossmix; the EdgeConverter (f32 passthrough / TPDF-dithered
+  shared 16-bit / bit-exact integer packing) at every backend's
+  edge; macOS shared-only per the ch. 12 limitation.
+- **`usb/`** — libmochypass's usb_pass.cpp on rusb: the UAC 1/2
+  descriptor parser and plan ranking, the DAC volume (1/256 dB steps,
+  the −40 dB pre-lower, restore, the per-device memory line format),
+  UsbDacDetails (pure derivation + the rusb reader via
+  GET_DESCRIPTOR), and the streaming driver: interface claim with
+  kernel detach on Linux, UAC2 clock programming with the selector
+  pin and UAC1 endpoint rate requests with read-back, 8 in-flight
+  ISO URBs of ~8 ms, the fractional frame carry, per-packet lengths,
+  the 16.16/10.14 async feedback endpoint with the 2% drift guard,
+  and the hand-back. macOS compiled out with the IOUSBHost note;
+  Windows + Linux only, `usb-uac`, experimental.
+- **`mochy-player/src/offline.rs`** — the offline render harness:
+  any RenderSource to PCM buffers in fixed blocks (the same pull
+  every backend makes) plus WAV packing through the output edge's
+  own `pcm::convert` — Phase 20's DSP parity rig.
+
+**Tests: 507 workspace** (from 392), +115 net: the transplanted
+SincResampler suite, the precision/dither tables, the bytecache
+stale-splice and LRU tables, the gapless elst/mdhd parses, decode
+block/seek/first-sample coverage, the ring SPSC stress, the clock
+snap/pull pair, the mixer sum/underrun/gain-ramp/gapless-handover
+set, the router's exactness-gate truth table (mocked capabilities),
+refusal memory, format-change re-open, device-loss, the crossfade and
+resume-at-position and resampling-voice core tests, the USB
+descriptor/volume/details tables (fourteen), and the offline
+harness's five. `cargo fmt --check` clean, `cargo clippy --workspace
+--all-targets -- -D warnings` clean, `cargo test --workspace` green
+(53 binaries).
+
+### Decisions
+
+1. **The USB worker pulls from the RenderSource; upstream's mutex
+   ring and its generation/flush rule retire.** usb_pass.cpp filled
+   a ring from the playback thread (usbWrite) and bumped a
+   generation on flush so already-queued packets stopped counting
+   toward position. The port's driver fills each URB straight from
+   the mixer (whose underrun policy supplies the DAC's
+   clock-keeping silence), and position is the mixer's
+   PlaybackClock — so `usbPlayed`'s generation guard has no number
+   left to protect, and the delay report only needs
+   submitted-minus-played. A seek still leaves ≤64 ms of pre-seek
+   audio finishing at the DAC, exactly the tail upstream left.
+2. **libusb completion detection is a per-slot `Box<AtomicBool>` in
+   `user_data`.** Upstream reaped URBs and matched the `usercontext`
+   pointer; libusb instead invokes a callback on the
+   event-handling thread, so the callback only raises the flag and
+   the worker polls it — the same one-slot-at-a-time walk, no locks.
+   Boxed so the address survives even if a slot moves.
+3. **The raw descriptor blob comes from GET_DESCRIPTOR, not rusb's
+   parsed tree.** UsbManager handed upstream a flat byte blob and
+   UsbAudioDescriptors.kt walks it; rusb parses instead. The reader
+   issues the standard control request (0x80/0x06) for the device
+   descriptor and the active configuration (header first for
+   wTotalLength, then whole), reconstructing exactly the stream the
+   Kotlin parsed.
+4. **USB volume wire values are signed 16-bit** — the initial draft
+   read them unsigned (a −60 dB floor became +196 dB), caught when
+   the module's own tests first ran. The mock pipe records the
+   wValue **low** byte as the channel (the high byte is the control
+   selector), matching the USB audio class layout.
+5. **`libc` is the phase's only new pin** (§9 updated): libusb1-sys's
+   event-wait FFI takes `libc::timeval` by reference. It rides the
+   `usb-uac` feature as an optional dependency; everything else
+   (symphonia, cpal, wasapi, alsa, rusb) was pre-pinned and is now
+   exercised.
+6. **`OpenedStream::from_parts` is `pub(crate)`, cfg-gated to the
+   usb driver's configs.** The in-tree backends live in output/'s
+   child modules (private-field access); crate::usb sits outside,
+   so it needs the door — and without the cfg the constructor is
+   dead code whenever the driver is compiled out.
+7. **The offline harness ships compiled, not `cfg(test)`.** Phase
+   20's capture scripts drive it from outside the crate; nothing in
+   the app's runtime path depends on it. `wav()` reuses
+   `pcm::convert` so a capture is byte-identical to what the output
+   edge would have carried.
+8. **UAC1 rate lists use the count-0 range convention** exactly as
+   upstream UsbAudioDescriptors.kt:179 — `count == 0` reads two
+   triples as (low, high); the fixtures encode bcdUSB little-endian
+   and include the bFormatType byte (both were wrong in the draft's
+   synthetic descriptors, caught by the first real run of the
+   module's tests — they had never executed before the module was
+   wired into lib.rs).
+
+### Deviations
+
+- **The Windows compile legs could not run in this sandbox.** The
+  full `cargo check --target x86_64-pc-windows-msvc` is blocked by
+  aws-lc-sys/opusic-sys (cmake with an MSVC generator — no Visual
+  Studio, no root); `x86_64-pc-windows-gnu` by libusb1-sys (needs
+  mingw gcc). What was verified instead: a throwaway crate
+  (`scripts/check-win`, not in the repo) type-checked the REAL
+  output + usb module files against real cpal 0.18.2 + wasapi 0.27.0
+  for x86_64-pc-windows-msvc — clean, including the WASAPI
+  exclusive backend. The usb driver's only Windows-excluded code is
+  the Linux kernel-detach block; the rest is portable Rust already
+  checked on Linux against the same rusb 0.9.4 API. First Windows
+  CI leg should run `cargo check -p mochy-audio --features
+  exclusive-win,usb-uac`.
+- **The Linux legs ran against pkg-config shims** over the installed
+  runtime libraries (libasound.so.2, libusb-1.0.so.0; no -dev
+  packages, no root): hand-written .pc files plus a symlink, kept
+  outside the repo in the sandbox's tooling area. Everything links
+  and runs against the same ABI the distro packages install.
+- **The exclusive backends are type-checked + unit-tested, not
+  device-tested** — this sandbox has no audio hardware and no
+  exclusive-mode DAC; the exactness gate's truth table runs against
+  mocked capability reports, as the prompt's acceptance section
+  specifies. First on-metal verification (Windows WASAPI-exclusive
+  into a real DAC, ALSA `hw:` on Linux, a UAC DAC over rusb) belongs
+  to the M2 checkpoint's live run.
+- **`usbChosen` is not surfaced.** Upstream's Kotlin asked the
+  native side which plan won (UsbPass.plan); the port's driver keeps
+  the winning plan internal to its StreamReport's device id, and no
+  caller needs the index yet. Recorded so a future settings surface
+  ("DAC running at 24-bit in 4 bytes") knows where to add it.
+
+### Next steps (for Phase 09 / the M2 close-out)
+
+1. **QueueMachine + ErrorPolicy + SleepTimer + SongTuning** — the
+   roadmap's Phase 10 remainder, over the engine landed here; the
+   proptest pin is reserved for its queue property tests.
+2. **The M2 checkpoint's live run** (radio end-to-end with queue
+   semantics) needs the app shell driving PlayerCore — behind
+   `--features live` on a maintainer machine with real output
+   devices, exercising the exclusive gate and the USB driver
+   on-metal.
+3. **Phase 19-20's DSP graph plugs into the same RenderSource
+   seam** the offline harness already drives; the published
+   `output_delay_us` is the crossmix start-latency input, and the
+   harness's WAV captures are the parity fixtures to diff against
+   upstream Android captures of the same settings.
+4. **fdk-aac** stays an optional seam (HE-AAC); enabling it only
+   adds the NOTICE disclosure — decide when a stream actually needs
+   it (the client walk prefers AAC-LC containers today).
