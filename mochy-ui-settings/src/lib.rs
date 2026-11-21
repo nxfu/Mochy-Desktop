@@ -2,9 +2,15 @@
 //!
 //! Upstream absorption: ui/screens/settings (72 files) + audiolab/ + equalizer/ + setup/ (17 files) + devspace/ diagnostics screens.
 //!
-//! Phase 01 bootstrap stub — no public API yet. The implementing phase (see
-//! docs/PROGRESS.md) fills this crate in against docs/PORT_SPEC.md; until
-//! then this stub only proves the workspace seam compiles and tests.
+//! Phase 07 fills in `login` — the port of
+//! `ui/screens/settings/importsync/YouTubeLoginScreen.kt`: the wry
+//! sign-in window with cookie extraction (feature `login-window`), the
+//! loopback-redirect fallback, the manual cookie-paste last resort, the
+//! pure extraction/validation core, account persistence into the vault
+//! and the settings registry, and sign-out (App.kt forgetAccount). The
+//! settings screens themselves arrive with the UI phases (M3+).
+
+pub mod login;
 
 #[cfg(test)]
 mod tests {

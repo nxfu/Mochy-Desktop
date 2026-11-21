@@ -13,6 +13,19 @@ use mochy_innertube::session::{
 };
 use mochy_vault::{Vault, VaultKey};
 
+/// Serializes every test that runs `SessionMirror::initialize` (or
+/// asserts the process-global data-saver gate): initialize feeds the
+/// mochy-net atomics, so two initialize-calling tests running in
+/// parallel race each other's gate pushes (the cross-crate sibling of
+/// mochy-net's own OFFLINE_FLAG_LOCK discipline).
+static GATE_RACE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn gate_lock() -> std::sync::MutexGuard<'static, ()> {
+    GATE_RACE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 fn temp_store() -> SettingsStore {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("settings.json");
@@ -24,6 +37,7 @@ fn temp_store() -> SettingsStore {
 
 #[test]
 fn initialize_mirrors_settings_and_vault_into_the_session() {
+    let _gate = gate_lock();
     let store = temp_store();
     let vault = Vault::open_in_memory();
     let session: SharedSession = Arc::new(RwLock::new(Session::default()));
@@ -81,6 +95,7 @@ fn initialize_mirrors_settings_and_vault_into_the_session() {
 
 #[test]
 fn initialize_flags_a_scrape_when_visitor_data_missing() {
+    let _gate = gate_lock();
     let store = temp_store();
     let vault = Vault::open_in_memory();
     let session: SharedSession = Arc::new(RwLock::new(Session::default()));
@@ -97,6 +112,7 @@ fn initialize_flags_a_scrape_when_visitor_data_missing() {
 
 #[test]
 fn system_default_locale_falls_back_to_the_system() {
+    let _gate = gate_lock();
     let store = temp_store();
     let vault = Vault::open_in_memory();
     let session: SharedSession = Arc::new(RwLock::new(Session::default()));
@@ -119,6 +135,7 @@ fn system_default_locale_falls_back_to_the_system() {
 
 #[test]
 fn watchers_push_changes_into_the_live_session() {
+    let _gate = gate_lock();
     let store = temp_store();
     let vault = Vault::open_in_memory();
     let session: SharedSession = Arc::new(RwLock::new(Session::default()));
@@ -291,6 +308,7 @@ fn proxy_change_with_signed_out_session_triggers_rotation() {
 /// is atomic and this pump is the equivalent of the store read).
 #[test]
 fn initialize_and_watchers_feed_the_data_saver_gate() {
+    let _gate = gate_lock();
     let store = temp_store();
     let vault = Vault::open_in_memory();
     let session: SharedSession = Arc::new(RwLock::new(Session::default()));

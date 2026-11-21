@@ -16,3 +16,37 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[dependencies]
+# The login flow persists the cookie + visitor/data-sync ids into the
+# OS keychain (upstream: dataStore InnerTubeCookieKey/VisitorDataKey/
+# DataSyncIdKey) and the account name/email/handle into settings.
+mochy-vault = { path = "../mochy-vault" }
+# Account settings keys (accountName/accountEmail/accountChannelHandle)
+# and the settings store.
+mochy-config = { path = "../mochy-config" }
+# accountInfo over the Phase 04 account_menu endpoint + the shared
+# session the login pushes credentials into.
+mochy-innertube = { path = "../mochy-innertube" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# The wry 0.57 login window (tier 1 + tier 2 of the R3 mitigation).
+# Feature-gated: the webview backends need system libraries the CI
+# matrix does not install (webkit2gtk on Linux); the pure core —
+# extraction, validation, persistence, sign-out — compiles and tests
+# everywhere without the feature.
+wry = { workspace = true, optional = true }
+tao = { workspace = true, optional = true }
+cookie = { workspace = true, optional = true }
+
+[features]
+# The interactive login window (tao event loop + wry webview).
+login-window = ["dep:wry", "dep:tao", "dep:cookie"]
+
+[dev-dependencies]
+tempfile = "3.27.0"
+tokio = { workspace = true }
+

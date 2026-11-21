@@ -217,6 +217,14 @@ windows = "0.62.2"
 # wry exposes cookies_for_url incl. HttpOnly on all three desktop backends —
 # the load-bearing piece for login + import capture (blueprint ch. 4.1/13).
 wry = "0.57.3"
+# The windowing/event-loop half of the login webview (wry's own examples'
+# pairing; verified on crates.io 2026-11-21: 0.37.0 current, and it is the
+# dev-dependency line wry 0.57.3 itself pins — Phase 07 addition).
+tao = "0.37.0"
+# The cookie type wry 0.57's cookies_for_url returns (mapped into the pure
+# JarCookieRecord). Same 0.18 line already in the graph via reqwest
+# (Phase 07 addition, matches Cargo.lock so no second copy resolves).
+cookie = "0.18"
 # QuickJS-NG bindings for the EJS n-solver and signature-cipher code
 # (replaces the Android WebViews; features selected by Phase 08).
 rquickjs = "0.14.0"

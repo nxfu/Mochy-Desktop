@@ -1,0 +1,142 @@
+{
+  "_provenance": "Recorded-shape fixture, values redacted/invented: the cookie set a signed-in music.youtube.com page carries in a desktop-Chrome webview jar (the shape wry cookies_for_url(https://music.youtube.com/) returns). Covers the harvest rules: .youtube.com domain cookies incl. the HttpOnly SAPISID, the .google.com siblings that must be filtered, an expired row, a www-only host cookie and a path-bound cookie.",
+  "harvest_url": "https://music.youtube.com/",
+  "now_unix": 1770000000,
+  "jar": [
+    {
+      "name": "VISITOR_INFO1_LIVE",
+      "value": "Cgt2aXNpdG9yX2lk",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": false,
+      "secure": true
+    },
+    {
+      "name": "YSC",
+      "value": "sc-token",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": null,
+      "http_only": true,
+      "secure": true
+    },
+    {
+      "name": "SAPISID",
+      "value": "REDACTED_SAPISID_VALUE",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": true,
+      "secure": true
+    },
+    {
+      "name": "__Secure-3PAPISID",
+      "value": "REDACTED_3PAPISID_VALUE",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": true,
+      "secure": true
+    },
+    {
+      "name": "SID",
+      "value": "REDACTED_SID",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": true,
+      "secure": false
+    },
+    {
+      "name": "HSID",
+      "value": "REDACTED_HSID",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": true,
+      "secure": false
+    },
+    {
+      "name": "SSID",
+      "value": "REDACTED_SSID",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": true,
+      "secure": true
+    },
+    {
+      "name": "APISID",
+      "value": "REDACTED_APISID",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": false,
+      "secure": false
+    },
+    {
+      "name": "LOGIN_INFO",
+      "value": "REDACTED_LOGIN_INFO",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": true,
+      "secure": true
+    },
+    {
+      "name": "PREF",
+      "value": "hl=en&gl=US",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": false,
+      "secure": true
+    },
+    {
+      "name": "SID",
+      "value": "GOOGLE_SIDE_SSID",
+      "domain": ".google.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": true,
+      "secure": false
+    },
+    {
+      "name": "SAPISID",
+      "value": "GOOGLE_SIDE_SAPISID",
+      "domain": ".google.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": true,
+      "secure": true
+    },
+    {
+      "name": "ACCOUNT_CHOOSER",
+      "value": "stale",
+      "domain": ".youtube.com",
+      "path": "/",
+      "expires_at": 1700000000,
+      "http_only": false,
+      "secure": true
+    },
+    {
+      "name": "WWW_ONLY",
+      "value": "www",
+      "domain": "www.youtube.com",
+      "path": "/",
+      "expires_at": 1799999999,
+      "http_only": false,
+      "secure": true
+    },
+    {
+      "name": "PATHBOUND",
+      "value": "path",
+      "domain": ".youtube.com",
+      "path": "/watch",
+      "expires_at": 1799999999,
+      "http_only": false,
+      "secure": true
+    }
+  ]
+}
