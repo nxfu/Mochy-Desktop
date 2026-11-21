@@ -11,6 +11,7 @@
 //! top of the graph seams defined here.
 
 pub mod bytecache;
+pub mod decode;
 pub mod pcm;
 pub mod precision;
 pub mod sinc;
