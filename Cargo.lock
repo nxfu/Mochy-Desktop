@@ -1647,6 +1647,17 @@ version = "0.1.0"
 [[package]]
 name = "mochy-importer"
 version = "0.1.0"
+dependencies = [
+ "mochy-config",
+ "mochy-innertube",
+ "mochy-vault",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "mochy-innertube"

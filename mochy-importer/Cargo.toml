@@ -16,3 +16,24 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[dependencies]
+# Sync gating reads the live settings snapshot (ytReportPlays, ytPullHistory,
+# ytmSync, ytSyncHold, ytExcludeImports, offlineMode...).
+mochy-config = { path = "../mochy-config" }
+# The signed-in check reads the cookie from the OS keychain vault
+# (upstream: dataStore InnerTubeCookieKey + parseCookieString).
+mochy-vault = { path = "../mochy-vault" }
+# parseCookieString + the future full-sync facade adapter (Phase 22).
+mochy-innertube = { path = "../mochy-innertube" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+# Async tests for the replay/engine seams (dev-only: the public API stays
+# tokio-free — futures are boxed, Phase 06 precedent).
+tokio = { workspace = true }
+tempfile = "3.27.0"
+
