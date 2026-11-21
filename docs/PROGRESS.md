@@ -99,6 +99,15 @@ task — see HANDOFF ## Phase 06 and the PORT_SPEC roadmap note.)*
 - [x] NewPipeExtractor-needed parts re-implemented (STS, last-resort extraction) studying rustypipe (done in Phase 06 — `stream/newpipe.rs`; the age-restriction deviation is recorded)
 - [x] M1 checkpoint: signed-out search/browse/album/artist/playlist parity; stream URL validates; HANDOFF entry (parity: Phase 05 fixture corpus + wire tests; validation: Phase 06 fault-injection suite, all offline; the live end-to-end run stays behind `--features live` until an app shell can drive it)
 
+*(2026-11-21 audit note: an independent audit-and-corrective pass over
+Phases 04–06 fixed 16 defects — including the Windows CI EJS failure
+(QuickJS stack budget), a broken two-argument signature-cipher call,
+the WEB_CREATOR swap replay slot, a corrupting binary upload body and
+the search_summary flat-playlist drop — and added 7 regression tests.
+Windows/macOS re-verification pends the next CI run on
+`audit-fix-phase-04-06`. See HANDOFF "Phase 04–06 Audit and Corrective
+Work".)*
+
 ## M2 — Audio engine
 
 ### Phase 09 — Decode pipeline (mochy-audio)

@@ -1268,7 +1268,7 @@ async fn the_ejs_engine_and_cipher_boot_lazily_and_survive() {
 /// and main_served bugs).
 #[tokio::test]
 async fn an_age_restricted_swap_replays_the_creator_answer_as_web_creator() {
-    let mut responses = vec![
+    let responses = vec![
         mint("CgtVISIONOSA"),
         player_status("AGE_CHECK_REQUIRED", "Sign in to confirm your age"),
         // the metadata client's PO-token mint fails, its STS lookup

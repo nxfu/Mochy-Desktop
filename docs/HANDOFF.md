@@ -1138,6 +1138,16 @@ mock harness) → `phase-06(docs)` — on branch `phase-06` **cut from
   mock-harness `watch`-over-`Notify` fix (tests/common/mod.rs) is test
   infrastructure, not behavior.
 
+> **Correction (2026-11-21 audit, appended):** the paragraph above was
+> wrong when written. The audit found four real behavioral divergences
+> this phase had shipped — the dropped sig-function constant argument,
+> the EJS fetch error aborting the walk, the −1 replay slot ignoring
+> `usedAgeRestrictedClient`, and `main_served` reading the pre-swap
+> status — plus the QuickJS stack-budget defect that failed the
+> Windows EJS test. All are fixed on `audit-fix-phase-04-06`; see the
+> "Phase 04–06 Audit and Corrective Work" section for the defect
+> table. The historical entry is kept verbatim above.
+
 ### Next steps
 
 1. **Phase 07 remainder** (the only unticked Phase 07 item): the wry
@@ -1157,3 +1167,255 @@ mock harness) → `phase-06(docs)` — on branch `phase-06` **cut from
 4. The InnerTubeX engine, if ever wanted, implements
    `AlternateStreamEngine` behind the feature flag — no walk changes
    needed.
+
+## Phase 04–06 Audit and Corrective Work — 2026-11-21
+
+**Status:** complete (audit + corrective pass; see the verification
+matrix below for what is and is not proven)
+
+**Task:** an independent engineering review over Phases 04–06 — verify
+the implementations against the pinned upstream (bde01cb4), identify
+stubbed/misleading/incorrect work, fix the confirmed defects, and
+resolve the Windows CI failure of
+`stream::ejs::tests::solves_the_recorded_n_challenge_offline`
+(panic "the n solver must be extracted", ejs.rs:309, 134/135 lib tests
+otherwise green, run 44885220312 on commit `8d2190f`).
+
+**Branch:** `audit-fix-phase-04-06`, cut from `main` @ `8d2190f`
+(the phase-04/05/06 integration baseline; nothing reset, nothing
+force-pushed). Original base SHA recorded above.
+
+### What was independently audited
+
+- **Phase 04:** the 18-client registry field-by-field against
+  `YouTubeClient.kt` (all 23 constructor fields × 18 clients — **0
+  mismatches**); the roles (MAIN/METADATA/ACCOUNT/CAPTION/
+  STREAM_FALLBACK) against `YTPlayerUtils.kt` and `YouTube.kt`
+  (exact membership **and order**); the 22-endpoint catalog against
+  `InnerTube.kt`/`PoTokenWebView.kt` (paths, methods, header shapes,
+  the three dedicated clients); the transport (header injection,
+  SAPISIDHASH, compression, retry/429 policy, GET disk cache —
+  wire-proven by the golden suite); auth/guest rotation; the
+  `ContinuationPager` (ceiling-then-dedup order, both empty-page
+  policies, property tests).
+- **Phase 05:** the facade method-by-method against `YouTube.kt`
+  (57 live public methods + 7 private helpers ported; the only gaps
+  are the two NewPipe bridges — correctly deferred to the stream
+  phase, which landed them — and the three comments methods —
+  confirmed dead upstream); `pages/` purity (no I/O, no clock, no
+  randomness — verified); the fixture corpus (valid, redacted, every
+  parser fixture-tested); the 50-request ceiling wiring; getMediaInfo
+  (s48→s960 rewrite, the `//`-prefix asymmetry).
+- **Phase 06:** the walk against `YTPlayerUtils.kt:366-746`
+  (guest/signed-in orders verified test-by-test against the wire
+  fingerprints); ranking against `selectAudioFormatCandidates`
+  (LOW 70 000 / MEDIUM 135 000 / HIGH null, AUTO-vs-metered, the full
+  comparator chain, comparator-based not itag-pinned — all exact);
+  validation (one-byte last-byte ranged GET, 206/2xx/416/403
+  classification, stale-splice, PlaybackCache rules); the cipher
+  (PlayerJsFetcher, FunctionNameExtractor's 6+4 patterns, the QuickJS
+  runtime); PO tokens (Create/GenerateIT, cooldowns, SESSION-vs-
+  per-video placement); SABR absence and feature-flag hygiene; the 15
+  fault-injection walk tests.
+
+### What was already correct
+
+The client registry is a flawless 1:1 port; the endpoint catalog is
+complete and path/method-correct; the transport/golden-header layer,
+paging, guest rotation and the session mirror hold up under
+re-derivation from the Kotlin; the facade coverage claim (64 ported /
+2 deferred / 3 dead) is accurate and the deferrals are correctly
+characterized; ranking is numerically exact; the walk's happy paths,
+bot-check rotation and rate-limit stop match upstream; PO-token
+placement is right on both sides; SABR stays out and the `innertubex`/
+`live` features are properly fenced (live tests compile to zero
+without the feature — verified in the run matrix). The vendored
+solver assets verify: astring.js and meriyah.js are byte-identical
+(md5) to both the pinned Android repo and the official npm builds;
+yt.solver.core.js is the current yt-dlp/ejs master-recipe build and is
+semantically identical to the official 0.8.0 release artifact
+(build-shape differences only).
+
+### The Windows CI failure — root cause
+
+**QuickJS-NG recurses in C for every JS-to-JS call** (`OP_call` →
+`JS_CallInternal`, quickjs.c:18525-18547), so the EJS bundle's
+meriyah parse of the player script consumes one interpreter C frame
+per JS recursion level, bounded by QuickJS's **own internal default
+budget of 1 MiB** (`JS_DEFAULT_STACK_SIZE`, quickjs.h:441-443) — not
+by the OS thread stack. Measured on Linux/GCC debug builds with a
+`JS_SetMaxStackSize` probe: the pipeline peaks at **~250 KiB** for
+the delta-trimmed challenge fixture and **~390-512 KiB** for the real
+2,706,729-byte player — a 2-4× margin under the 1 MiB budget on GCC.
+Debug-profile **MSVC frames for the one-function interpreter are
+several times larger than GCC's** (every local of every opcode case
+gets its own unshared slot under `/Od`), which pushed the same
+recursion past the 1 MiB budget on the Windows CI build: meriyah
+threw `RangeError: Maximum call stack size exceeded`, the bundle's
+`jsc()` propagated it, and `EjsSolver::compile` swallowed it into an
+uninitialized `tracing` sink — the solver reported
+`n_available() == false` and the test panicked at ejs.rs:309.
+
+Ruled out by experiment before settling on the cause: CRLF checkout
+conversion (the suite passes with all fixtures/assets CRLF-converted
+— though `.gitattributes` was added anyway to pin LF for the
+byte-stable artifacts), the OS thread stack (Rust spawns 2 MiB on
+every Tier-1 platform; the suite passes with a 1 MiB thread stack),
+bundle version drift (verified against official builds), fixture
+encoding (pure ASCII + one U+22BD), and rquickjs limits (it sets
+none). Two corroborating measurements: a 1 MiB budget allows only
+**~326 JS call frames** on Linux-debug (so depth-512 recursion fails
+even on Linux — the engine was under-budgeted everywhere, macOS's
+512 KiB default secondary-thread stack was one real player away from
+a hard overflow), and a JS budget **larger** than the real thread
+stack turns QuickJS's clean RangeError guard into a hard SIGSEGV
+(reproduced during the audit) — which is why the fix raises the
+thread stack and the JS budget **together**.
+
+**Fix:** the dedicated engine thread now reserves a 32 MiB OS stack
+and raises QuickJS's recursion budget to 16 MiB
+(`Runtime::set_max_stack_size`) — ~8× the MSVC-debug worst-case
+estimate for the real player. `EjsSolver` now carries `compile_error`
+(the bundle's own failure text) so an unavailable solver is
+self-diagnosing; the test assertions include it. The full chain was
+verified against the **real untrimmed player** through the production
+`Engine`+`EjsSolver` path: both solvers extracted, and the recorded
+vector `KBx1qz7jMhxELa8c → ttPvh7WIptsgSw` reproduced exactly.
+
+### Defects discovered and fixed
+
+| # | Defect | Root cause | Fix |
+|---|--------|-----------|-----|
+| 1 | Windows EJS test failure (above) | QuickJS 1 MiB internal budget vs MSVC-debug frames | 32 MiB thread + 16 MiB JS budget, both set in `Engine::new` |
+| 2 | `deobfuscate_signature` dropped the sig function's constant first argument — deobfuscation broken on every modern (pattern-1) player; `constant_arg` captured, logged, never passed; the unit test masked it with a 1-arg function | cipher.rs ported the call, not the argument list (CipherWebView.kt:99-104 is `func(constantArg, obfuscatedSig)`) | `CipherRuntime::sig_constant_arg` threaded into the generated call; MINI_PLAYER now two-parameter; regression asserts the `-24` suffix |
+| 3 | A player-JS fetch error aborted the whole walk (`engine.ejs_solver(transport).await?`) | the `?` propagated what upstream catches everywhere (PlayerJsFetcher.kt:63-66 → null) | degrade to "no solver", url passes through untransformed; walk test pins it |
+| 4 | The −1 replay slot always used `main_client` instead of `usedAgeRestrictedClient ?: MAIN_CLIENT` — after the WEB_CREATOR swap the creator url was probed and served with VISIONOS's www-origin headers | port read YTPlayerUtils.kt:624-628 incompletely | `replay_client` from `used_age_restricted_client`; the studio-origin pair now rides the probe and `PlaybackData` |
+| 5 | `main_served` was computed from the **pre-swap** status — a successful WEB_CREATOR swap whose replay failed spuriously prepended the three ACCOUNT_CLIENTS | the status capture at walk.rs:277 predated the swap block | `main_served` from the post-swap `current_status` (Kotlin 504/516 order) |
+| 6 | `playlist_image_upload_finalize` sent the image as a **lossy-UTF-8 JSON-quoted string** — every non-ASCII byte of a real JPEG/PNG corrupted on the wire; the golden test used ASCII bytes and never asserted the body | `ShapedRequest.body` was JSON-only | `raw_body` variant (octet-stream, untouched bytes); wire-capture harness stores raw bytes; regression asserts byte-exact PNG magic |
+| 7 | `timed_text` sent the full `X-YouTube-Client-*` header set | port reused the endpoint helper where ktor's `timedText` sets only the UA | header-minimal shape + golden test |
+| 8 | `search_summary`'s flat item-section used `SearchSuggestionPage` instead of `SearchSummaryPageParser` — flat playlists silently dropped (the "Playlists" group could never populate), songs lost duration/library tokens | youtube.rs:418 mis-routed (YouTube.kt:201-205 uses SearchSummaryPage) | parser swap + a flat-playlist item in search.json (and its generator) + a facade wire test |
+| 9 | PO-token encoding: unpadded URL-safe base64 vs upstream's **padded** (okio `base64()` keeps `=`) | potoken.rs used `URL_SAFE_NO_PAD` | `URL_SAFE` |
+| 10 | a failed session re-mint left the stale session in the slot | upstream nulls first (PoTokenGenerator.kt:124-133) | `guard.take()` before the recreate |
+| 11 | the NewPipe different-itag audio fallback matched the combined `formats` too | upstream checks `adaptiveFormats` only (YTPlayerUtils.kt:1173-1177) | adaptive-only |
+| 12 | `load_overrides` returned `Err(NotFound)` contradicting its "(missing file = no overrides)" contract | doc/behavior drift | NotFound → empty registry |
+| 13 | BotGuard non-200 gate accepted any 2xx | upstream compares `httpCode != 200` exactly | strict 200 |
+| 14 | player-hash regex missed escaped-separator bodies (`\/s\/player\/`) | port dropped PlayerJsFetcher.kt:25's `\\?` tolerance | tolerance restored |
+| 15 | the −1 replay carried a reachable `expect` (panic path) | invariant encoded as a panic | total `continue` |
+| 16 | docs: fixtures README/HANDOFF claimed all 24 fixtures generated (11 are); CAPTION_CLIENTS cited the wrong file; Phase 06's "Decision 5 is the only behavioral divergence" was false (defects 2-5 above) | bookkeeping drift | README corrected; this section records the corrections |
+
+Accepted, documented deviations (not fixed, with reasons): the
+`PlaybackCache::clear`-on-416 rule is stronger than upstream's
+byte-span-only clear (documented Phase 06 decision, consumed by Phase
+09 — re-resolution is always safe); the final-failure taxonomy
+collapses upstream's REMOTE_ERROR-vs-plain-Exception split into one
+`Unplayable` (error-shape only); `main_client_failure` wraps all
+error classes where Kotlin wraps only `ResponseException` (message
+text only); the export splice edits the last `})(_yt_player);`
+occurrence where Kotlin replaces all (equivalent for every known
+player shape).
+
+### Files changed
+
+- `mochy-innertube/src/stream/jsengine.rs` — engine stack budget (root
+  cause fix) + the recursion-budget regression test
+- `mochy-innertube/src/stream/ejs.rs` — `compile_error` observability
+- `mochy-innertube/src/stream/cipher.rs` — constant-arg threading,
+  hash-regex tolerance, two-param MINI_PLAYER, regression tests
+- `mochy-innertube/src/stream/walk.rs` — −1 slot client, post-swap
+  `main_served`, total replay path
+- `mochy-innertube/src/stream/playback.rs` — ejs fetch degradation
+- `mochy-innertube/src/stream/potoken.rs` — padded base64, session
+  slot nulling
+- `mochy-innertube/src/stream/newpipe.rs` — adaptive-only fallback
+- `mochy-innertube/src/endpoints.rs` — raw-body upload, timed_text
+  headers, strict BotGuard 200
+- `mochy-innertube/src/transport.rs` — `ShapedRequest::raw_body`
+- `mochy-innertube/src/client.rs` — load_overrides contract, citation
+- `mochy-innertube/src/youtube.rs` — search_summary flat-path parser
+- `mochy-innertube/tests/common/mod.rs` — raw-byte capture
+  (`body_bytes()`)
+- `mochy-innertube/tests/{golden_headers,facade_wire,stream_walk}.rs`
+  — +4 regression tests (13 golden / 9 facade-wire / 17 walk)
+- `mochy-innertube/tests/fixtures/search.json` +
+  `scripts/gen_fixtures.py` — the flat-playlist regression case
+- `mochy-innertube/tests/fixtures/README.md` — provenance correction
+- `.gitattributes` — LF pinning for byte-stable text artifacts
+- `docs/HANDOFF.md`, `docs/PROGRESS.md` — this section + ticks
+
+### Tests added
+
+`js_recursion_budget_covers_player_parser_depths` (jsengine),
+`single_argument_sig_functions_are_called_without_a_constant` (cipher),
+`timed_text_sends_only_the_user_agent` (golden),
+`playlist_image_upload_handshake` binary-body assertions (golden),
+`facade_search_summary_groups_flat_playlists` (facade wire),
+`an_age_restricted_swap_replays_the_creator_answer_as_web_creator`
+(walk), `a_player_js_fetch_failure_degrades_instead_of_failing_the_walk`
+(walk). The EJS acceptance test now reports the compile error on
+failure. **+7 net new tests; workspace 333 → 340** (one golden test
+was extended rather than added).
+
+### Tests executed (2026-11-21, this machine: x86_64 Linux, GCC,
+Rust 1.100.0, debug profile)
+
+- `cargo fmt --all -- --check` — clean
+- `cargo test --workspace` — **340 passed, 0 failed, 2 ignored**
+  (both ignored are feature-gated doc-tests: the `live` recorder
+  example and one Phase-02 gate, compiled out by design)
+- `cargo test -p mochy-innertube --offline` — 223/223 green
+- `cargo clippy --workspace --all-targets -- -D warnings` — 0 findings
+- `cargo test -p mochy-innertube --all-features --no-run` — compiles
+  clean (live + innertubex together)
+- EJS recorded-challenge regression, standalone:
+  `solves_the_recorded_n_challenge_offline` — ok (0.5 s, offline)
+- Real-player verification (manual, networked, not committed): the
+  untrimmed 2,706,729-byte player through `Engine`+`EjsSolver`
+  extracts both solvers and reproduces `KBx1qz7jMhxELa8c →
+  ttPvh7WIptsgSw` (20 s)
+
+### Cross-platform verification status
+
+- **Linux (x86_64, this machine):** verified locally — every command
+  above.
+- **Windows:** root cause identified, fixed and regression-proven by
+  construction (the failing condition is now budgeted 8× past the
+  measured MSVC-debug worst case; the depth-512 regression fails
+  under the old budget on **every** platform, so it cannot pass on
+  Linux while still failing on Windows). **CI re-verification pending
+  push** — this sandbox has no push credentials and no Windows
+  runner; the claim "green on Windows" awaits the next CI run on the
+  branch.
+- **macOS:** same situation as Windows (the fix also removes a latent
+  hard-overflow: macOS secondary threads default to 512 KiB, thinner
+  than the real player's measured ~390-512 KiB stack need under the
+  old code).
+- CRLF checkouts ruled out experimentally; `.gitattributes` now pins
+  LF for the byte-stable artifacts regardless.
+
+### Remaining limitations
+
+1. The EJS fixture is a **trimmed** player (68 KB of 2.7 MB) — the
+   right size for CI, but the real-player run above is the stronger
+   evidence and was performed once, manually.
+2. `stream_walk` test 15 (`the_ejs_engine_and_cipher_boot_lazily...`)
+   still never drives an n-solving client to a transformed url — the
+   EJS seam's wire-level integration is proven by the unit acceptance
+   test, not the walk suite.
+3. Windows/macOS legs are verified by analysis + cross-platform
+   regression design, not by an executed run (see above).
+4. The 13 non-generated Phase 05 fixtures have no generator (documented
+   in the fixtures README) — regenerating them means hand edits.
+
+### Recommended next steps for Phase 07
+
+1. Push the branch and let the 3-OS CI matrix re-verify — the Windows
+   EJS leg is the acceptance gate for defect 1.
+2. The remaining Phase 07 scope is unchanged: the wry login window
+   with cookie extraction, the account menu over `accountInfo`, and
+   sign-out forgetting the vault keys.
+3. Consider a `--features live` maintainer run to replace the
+   synthetic corpus with redacted real captures (the record path
+   exists; see the fixtures README).
+4. Phase 09 should consume `validate::stale_splice` + `PlaybackCache`
+   as documented, and revisit the 416-clear strength decision against
+   the real byte-span cache behavior.
