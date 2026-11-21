@@ -16,3 +16,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[dependencies]
+# The pure deep-link/share parser (links.rs) — MainActivity.kt
+# 1597-1684 pathSegments/host/getQueryParameter semantics over pasted or
+# handed-over YouTube links (Phase 07).
+url = { workspace = true }
+

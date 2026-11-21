@@ -1601,6 +1601,9 @@ dependencies = [
 [[package]]
 name = "mochy"
 version = "0.1.0"
+dependencies = [
+ "url",
+]
 
 [[package]]
 name = "mochy-audio"

@@ -251,6 +251,12 @@ base64 = "0.23.1"
 # `regex`'s `\d` is Unicode `Nd` exactly like Kotlin's `\p{Nd}`.
 # Verified on crates.io 2026-11-21: 1.13.2 current (Phase 05 addition).
 regex = "1.13.2"
+# URL parsing for the deep-link/share router (mochy bin, MainActivity.kt
+# 1597-1684: pathSegments/lastPathSegment/host/getQueryParameter over
+# pasted or handed-over YouTube links). Already in the graph via
+# reqwest; version-verified on crates.io 2026-11-21 (Phase 07 addition,
+# matches the 2.5.8 in Cargo.lock so no second copy resolves).
+url = "2.5.8"
 
 # --- Errors and logging ---------------------------------------------------------------------------
 thiserror = "2.0.21"
