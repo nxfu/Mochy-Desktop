@@ -248,34 +248,33 @@ impl Mixer {
             if stale {
                 continue;
             }
-            // 3. Accumulate with per-frame gain.
+            // 3. Accumulate with per-frame gain; frames past `taken`
+            // contribute silence — the underrun policy: the buffer was
+            // zeroed above.
             let channels = self.channels;
-            for frame in 0..frames {
-                let g = frame_gain[frame];
-                let base = frame * channels;
-                if frame < taken {
-                    let from = base;
-                    let to = base + channels;
-                    let src = &self.voice_scratch[from..to];
-                    for (dst, src) in out[from..to].iter_mut().zip(src) {
-                        *dst += src * g;
-                    }
+            let taken_samples = taken * channels;
+            let gains = &frame_gain[..taken];
+            let scratch = &self.voice_scratch[..taken_samples];
+            for ((frame_samples, gain), src) in out[..taken_samples]
+                .chunks_exact_mut(channels)
+                .zip(gains)
+                .zip(scratch.chunks_exact(channels))
+            {
+                for (dst, src) in frame_samples.iter_mut().zip(src) {
+                    *dst += src * gain;
                 }
-                // Frames past `taken` contribute silence — the underrun
-                // policy: the buffer was zeroed above.
             }
-            if let Some(ramp) = self.ramps[slot].as_ref() {
-                if ramp.is_finished() {
+            if let Some(ramp) = self.ramps[slot].as_ref()
+                && ramp.is_finished() {
                     self.gains[slot] = {
-                        let spec_end = ramp.current_gain();
-                        spec_end
+                        
+                        ramp.current_gain()
                     };
                     self.ramps[slot] = None;
                 }
-            }
             // 4. Position bookkeeping: only frames that actually sounded.
             let played = block_played;
-            let played_total = shared.played_out.fetch_add(played as u64, Ordering::AcqRel) as u64
+            let played_total = shared.played_out.fetch_add(played as u64, Ordering::AcqRel)
                 + played as u64;
             let base = shared.base_media_sample.load(Ordering::Acquire);
             let media_rate = shared.media_rate.load(Ordering::Acquire);

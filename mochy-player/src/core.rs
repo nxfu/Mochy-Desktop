@@ -118,13 +118,12 @@ enum TaskCommand {
 
 /// One running decode task.
 struct TaskHandle {
-    slot: usize,
     commands: Sender<TaskCommand>,
     join: JoinHandle<()>,
 }
 
 impl TaskHandle {
-    fn stop(mut self) {
+    fn stop(self) {
         let _ = self.commands.send(TaskCommand::Stop);
         let _ = self.join.join();
     }
@@ -208,7 +207,7 @@ impl PlayerCore {
         fade_in: Option<(f32, f32, u64, FadeCurve)>,
     ) -> Option<usize> {
         let slot = {
-            let mut tasks = self.tasks.lock().expect("task table poisoned");
+            let tasks = self.tasks.lock().expect("task table poisoned");
             let slot = (0..crate::mixer::MAX_VOICES).find(|slot| tasks[*slot].is_none())?;
             let shared = self.inner.voices[slot].clone();
             shared.active.store(false, Ordering::Release);
@@ -248,11 +247,7 @@ impl PlayerCore {
             });
         }
         let mut tasks = self.tasks.lock().expect("task table poisoned");
-        tasks[slot] = Some(TaskHandle {
-            slot,
-            commands: tx,
-            join,
-        });
+        tasks[slot] = Some(TaskHandle { commands: tx, join });
         Some(slot)
     }
 
@@ -278,7 +273,7 @@ impl PlayerCore {
         self.inner.voices[slot].ramp.publish(RampSpec {
             from,
             to,
-            duration_frames: duration_frames,
+            duration_frames,
             curve,
         });
     }
@@ -491,7 +486,7 @@ fn push_block(
     decoded: &[f32],
     media_channels: usize,
     output_channels: usize,
-    mut resampler: Option<&mut SincResampler>,
+    resampler: Option<&mut SincResampler>,
     resampled: &mut Vec<f32>,
 ) {
     // Channel count changes mid-stream are not a thing the formats we
@@ -513,7 +508,7 @@ fn push_block(
         }
         out
     };
-    match resampler.as_deref_mut() {
+    match resampler {
         None => {
             writer.push(&interleaved);
         }

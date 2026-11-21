@@ -30,6 +30,7 @@ pub mod core;
 pub mod fade;
 pub mod mailbox;
 pub mod mixer;
+pub mod output_link;
 pub mod ring;
 
 pub use clock::{playback_clock, PlaybackClock, SmoothedPosition};
