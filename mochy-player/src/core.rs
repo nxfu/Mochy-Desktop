@@ -19,7 +19,7 @@
 
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -28,8 +28,8 @@ use mochy_audio::sinc::SincResampler;
 
 use crate::clock::PlaybackClock;
 use crate::fade::FadeCurve;
-use crate::mixer::{Mixer, MixerParams, RampSpec};
 use crate::mailbox::ParamMailbox;
+use crate::mixer::{Mixer, MixerParams, RampSpec};
 use crate::ring::RingWriter;
 
 /// Fill above this fraction of the ring before idling (the hysteresis
@@ -233,9 +233,7 @@ impl PlayerCore {
         // Wait for the task to arm the voice (it sets media rate/base
         // before flipping active, so the callback never sees a
         // half-configured voice).
-        while !shared.active.load(Ordering::Acquire)
-            && !shared.eof.load(Ordering::Acquire)
-        {
+        while !shared.active.load(Ordering::Acquire) && !shared.eof.load(Ordering::Acquire) {
             std::thread::sleep(Duration::from_micros(200));
         }
         if let Some((from, to, duration, curve)) = fade_in {
@@ -254,9 +252,7 @@ impl PlayerCore {
     /// Marks the voice the clock follows.
     pub fn set_primary(&self, slot: usize) {
         for (i, voice) in self.inner.voices.iter().enumerate() {
-            voice
-                .primary
-                .store(i == slot, Ordering::Release);
+            voice.primary.store(i == slot, Ordering::Release);
         }
     }
 
@@ -269,7 +265,14 @@ impl PlayerCore {
     }
 
     /// Starts a gain ramp on one voice (the crossfade/duck primitive).
-    pub fn start_fade(&self, slot: usize, from: f32, to: f32, duration_frames: u64, curve: FadeCurve) {
+    pub fn start_fade(
+        &self,
+        slot: usize,
+        from: f32,
+        to: f32,
+        duration_frames: u64,
+        curve: FadeCurve,
+    ) {
         self.inner.voices[slot].ramp.publish(RampSpec {
             from,
             to,
@@ -380,9 +383,7 @@ fn decode_task(
 ) {
     let media_rate = source.media_rate();
     let media_channels = source.channels();
-    shared
-        .media_rate
-        .store(media_rate, Ordering::Release);
+    shared.media_rate.store(media_rate, Ordering::Release);
     shared.rate_out.store(output_rate, Ordering::Release);
     shared
         .base_media_sample
@@ -414,9 +415,7 @@ fn decode_task(
             Ok(TaskCommand::Stop) => break,
             Ok(TaskCommand::Seek(to)) => {
                 let landed = source.seek(to);
-                shared
-                    .base_media_sample
-                    .store(landed, Ordering::Release);
+                shared.base_media_sample.store(landed, Ordering::Release);
                 shared.played_out.store(0, Ordering::Release);
                 writer.reset();
                 if let Some(resampler) = resampler.as_mut() {
@@ -527,10 +526,8 @@ fn push_block(
                 }
             }
             let plane_refs: Vec<&[f32]> = planes.iter().map(|p| p.as_slice()).collect();
-            let mut out_planes: Vec<&mut [f32]> = resampled
-                .chunks_mut(max_out)
-                .take(channels)
-                .collect();
+            let mut out_planes: Vec<&mut [f32]> =
+                resampled.chunks_mut(max_out).take(channels).collect();
             let written = resampler.process(&plane_refs, in_frames, &mut out_planes);
             // Re-interleave the written frames.
             let mut out = Vec::with_capacity(written * channels);

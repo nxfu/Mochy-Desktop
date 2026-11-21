@@ -23,9 +23,9 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 
-use wasapi::{DeviceEnumerator, StreamMode, SampleType, WaveFormat};
+use wasapi::{DeviceEnumerator, SampleType, StreamMode, WaveFormat};
 
 use super::{
     EdgeConverter, ExactnessFailure, OpenError, OpenedStream, OutputBackend, OutputEvent,
@@ -100,7 +100,10 @@ impl OutputBackend for WasapiExclusive {
                 // inside run_stream.
             })
             .map_err(|e| OpenError::Failed(e.to_string()))?;
-        match rx.recv().map_err(|_| OpenError::Failed("stream thread died".into()))? {
+        match rx
+            .recv()
+            .map_err(|_| OpenError::Failed("stream thread died".into()))?
+        {
             OpenOutcome::Ready(report) => {
                 let join_stopped = stopped.clone();
                 Ok(OpenedStream {
@@ -190,7 +193,7 @@ fn run_stream(
                 format: Some(format),
                 hardware: None,
                 hardware_note: Some(e.to_string()),
-            })
+            });
         }
     };
     let granted_rate = wavefmt.get_samplespersec();
@@ -267,7 +270,9 @@ fn run_stream(
     if let Err(e) = client.start_stream() {
         return OpenOutcome::Failed(e.to_string());
     }
-    let device_name = device.get_friendlyname().unwrap_or_else(|_| "output".into());
+    let device_name = device
+        .get_friendlyname()
+        .unwrap_or_else(|_| "output".into());
     let report = StreamReport {
         sharing: Sharing::Exclusive,
         rate,

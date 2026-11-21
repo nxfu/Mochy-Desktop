@@ -21,8 +21,8 @@
 //! block took" — the upstream `flush` semantics ("drops what's queued
 //! and starts the frame count over", PassTransport.kt:20).
 
-use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
 #[cfg(target_pointer_width = "32")]
 compile_error!("the voice ring requires 64-bit atomics");
@@ -301,7 +301,9 @@ mod tests {
         let mut popped = 0usize;
         let mut out = vec![0f32; 48];
         for round in 0..16 {
-            let chunk: Vec<f32> = (pushed..pushed + 48).map(|i| i as f32 + round as f32 / 100.0).collect();
+            let chunk: Vec<f32> = (pushed..pushed + 48)
+                .map(|i| i as f32 + round as f32 / 100.0)
+                .collect();
             pushed += writer.push(&chunk);
             let n = reader.pop(&mut out);
             assert!(n > 0);
@@ -358,9 +360,13 @@ mod tests {
             received.extend_from_slice(&buf[..n * 2]);
         }
         producer.join().unwrap();
-        for (frame, pair) in received.chunks_exact(2).enumerate() {
+        for (frame, pair) in received.as_chunks::<2>().0.iter().enumerate() {
             assert_eq!(pair[0] as usize, frame * 2, "left channel frame {frame}");
-            assert_eq!(pair[1] as usize, frame * 2 + 1, "right channel frame {frame}");
+            assert_eq!(
+                pair[1] as usize,
+                frame * 2 + 1,
+                "right channel frame {frame}"
+            );
         }
     }
 }

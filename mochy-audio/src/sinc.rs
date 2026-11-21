@@ -54,7 +54,8 @@ impl Table {
         let gcd = gcd(in_rate, out_rate);
         let up = out_rate / gcd;
         let down = in_rate / gcd;
-        let taps = (BASE_TAPS * (f64::from(in_rate) / f64::from(out_rate)).max(1.0)).ceil() as usize;
+        let taps =
+            (BASE_TAPS * (f64::from(in_rate) / f64::from(out_rate)).max(1.0)).ceil() as usize;
         let length = u64::from(up) * taps as u64;
         if length > MAX_COEFFICIENTS {
             return None;
@@ -62,7 +63,8 @@ impl Table {
 
         // Kaiser's estimate: how wide the transition is for this length and
         // attenuation, in Hz at the input rate (`SincResampler.kt:124`).
-        let transition_hz = (STOPBAND_DB - 7.95) / (2.285 * 2.0 * std::f64::consts::PI * taps as f64)
+        let transition_hz = (STOPBAND_DB - 7.95)
+            / (2.285 * 2.0 * std::f64::consts::PI * taps as f64)
             * f64::from(in_rate);
         let stop_hz = f64::from(in_rate.min(out_rate)) / 2.0;
         let passband_hz = stop_hz - transition_hz;
@@ -285,11 +287,7 @@ fn bessel_i0(x: f64) -> f64 {
 
 /// `gcd` (`SincResampler.kt:160`).
 fn gcd(a: u32, b: u32) -> u32 {
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
-    }
+    if b == 0 { a } else { gcd(b, a % b) }
 }
 
 #[cfg(test)]

@@ -14,7 +14,7 @@
 //! reinit-at-position recovery.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{mpsc::Sender, Arc};
+use std::sync::{Arc, mpsc::Sender};
 
 use alsa::pcm::{Access, Format, HwParams, PCM};
 use alsa::{Direction, ValueOr};
@@ -36,9 +36,7 @@ fn verify_hw(request: &StreamRequest, hwp: &HwParams<'_>) -> Result<(), Exactnes
     let actual_channels = hwp.get_channels().unwrap_or(0) as usize;
     let actual_format = hwp.get_format().unwrap_or(Format::Unknown);
     let wanted = alsa_format(request.format);
-    if actual_rate != request.rate
-        || actual_channels != request.channels
-        || actual_format != wanted
+    if actual_rate != request.rate || actual_channels != request.channels || actual_format != wanted
     {
         return Err(ExactnessFailure {
             sharing: Some(Sharing::Exclusive),
@@ -96,8 +94,8 @@ impl OutputBackend for AlsaHw {
             .map_err(|e| OpenError::Failed(format!("alsa open {name}: {e}")))?;
         let buffer_frames;
         {
-            let hwp = HwParams::any(&pcm)
-                .map_err(|e| OpenError::Failed(format!("hw params: {e}")))?;
+            let hwp =
+                HwParams::any(&pcm).map_err(|e| OpenError::Failed(format!("hw params: {e}")))?;
             hwp.set_access(Access::RWInterleaved)
                 .map_err(|e| OpenError::Failed(e.to_string()))?;
             hwp.set_format(alsa_format(request.format))
@@ -121,7 +119,8 @@ impl OutputBackend for AlsaHw {
             }
             buffer_frames = hwp.get_buffer_size().unwrap_or(i64::from(request.rate)) as usize;
         }
-        pcm.prepare().map_err(|e| OpenError::Failed(e.to_string()))?;
+        pcm.prepare()
+            .map_err(|e| OpenError::Failed(e.to_string()))?;
         let report = StreamReport {
             sharing: Sharing::Exclusive,
             rate: request.rate,
@@ -163,12 +162,13 @@ impl OutputBackend for AlsaHw {
                     converter.convert(slice, &mut block);
                     // Publish the device's own delay measure.
                     if let Ok(delay) = pcm.delay()
-                        && delay >= 0 {
-                            thread_delay.store(
-                                (delay as u64 * 1_000_000) / u64::from(rate),
-                                Ordering::Release,
-                            );
-                        }
+                        && delay >= 0
+                    {
+                        thread_delay.store(
+                            (delay as u64 * 1_000_000) / u64::from(rate),
+                            Ordering::Release,
+                        );
+                    }
                     // Write through the typed IO for the container.
                     let ok = match format {
                         OutputFormat::F32 => block
@@ -192,8 +192,13 @@ impl OutputBackend for AlsaHw {
                             // the packed bytes are re-viewed as words.
                             let (_, bytes) = block.as_packed().unwrap_or((32, &[][..]));
                             i32_scratch.clear();
-                            i32_scratch
-                                .extend(bytes.as_chunks::<4>().0.iter().map(|c| i32::from_le_bytes([c[0], c[1], c[2], c[3]])));
+                            i32_scratch.extend(
+                                bytes
+                                    .as_chunks::<4>()
+                                    .0
+                                    .iter()
+                                    .map(|c| i32::from_le_bytes([c[0], c[1], c[2], c[3]])),
+                            );
                             write_typed(&pcm, &i32_scratch, channels, &events, |pcm, buf| {
                                 if format == OutputFormat::I24 {
                                     pcm.io_i32_s24().map(|io| io.writei(buf)).and_then(|r| r)

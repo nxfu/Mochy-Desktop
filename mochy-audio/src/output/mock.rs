@@ -5,7 +5,7 @@
 //! device-removed-mid-song scenario).
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc::Sender};
 
 use super::{
     OpenError, OpenedStream, OutputBackend, OutputEvent, OutputFormat, RenderSource, Sharing,

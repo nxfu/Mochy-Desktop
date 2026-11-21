@@ -67,8 +67,8 @@ fn flat_to_20k() {
     let input = tone(44_100, 20_000.0, 1.0, 0.5);
     let mut resampler = SincResampler::create(44_100, 48_000, 1).unwrap();
     let out = run(&mut resampler, &input, 0);
-    let db = 20.0 * (rms(&out, 4_000, out.len() - 4_000) / rms(&input, 4_000, input.len() - 4_000))
-        .log10();
+    let db = 20.0
+        * (rms(&out, 4_000, out.len() - 4_000) / rms(&input, 4_000, input.len() - 4_000)).log10();
     assert!(db.abs() < 0.01, "20 khz is {db} dB");
 }
 
@@ -91,9 +91,6 @@ fn chunks_match_one_block() {
     let pieces = run(&mut pieces_r, &input, 333);
     assert_eq!(whole.len(), pieces.len());
     for (i, (w, p)) in whole.iter().zip(&pieces).enumerate() {
-        assert!(
-            (w - p).abs() < 1e-6f32,
-            "sample {i} differs: {w} vs {p}"
-        );
+        assert!((w - p).abs() < 1e-6f32, "sample {i} differs: {w} vs {p}");
     }
 }

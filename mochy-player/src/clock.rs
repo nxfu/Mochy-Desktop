@@ -19,8 +19,8 @@
 //! the audio side owns two atomics and nothing else — **no locks, no
 //! allocation** in the callback.
 
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 /// Position discontinuities larger than this snap (seek, track change).
@@ -96,9 +96,7 @@ impl ClockWriter {
         self.inner
             .position_ns
             .store(position.0.to_bits(), Ordering::Release);
-        self.inner
-            .updated_at_ns
-            .store(now_ns(), Ordering::Release);
+        self.inner.updated_at_ns.store(now_ns(), Ordering::Release);
         self.inner.media_rate.store(media_rate, Ordering::Relaxed);
         self.inner
             .playing
@@ -121,7 +119,9 @@ impl PlaybackClock {
     /// the media. Exposed for tests and the parity harness; paint code
     /// wants [`smoothed_position`].
     pub fn audio_position(&self) -> Seconds {
-        Seconds(f64::from_bits(self.inner.position_ns.load(Ordering::Acquire)))
+        Seconds(f64::from_bits(
+            self.inner.position_ns.load(Ordering::Acquire),
+        ))
     }
 
     /// The media rate the position ticks at.
@@ -267,10 +267,7 @@ mod tests {
         // A seek far forward: snap, not pull.
         writer.publish(Seconds(60.0), 48_000, true);
         let snapped = clock.smoothed_position(&mut smoother, Instant::now());
-        assert!(
-            (snapped.0 - 60.0).abs() < 0.05,
-            "snapped to {snapped:?}"
-        );
+        assert!((snapped.0 - 60.0).abs() < 0.05, "snapped to {snapped:?}");
     }
 
     #[test]

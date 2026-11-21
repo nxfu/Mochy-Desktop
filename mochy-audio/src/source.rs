@@ -17,7 +17,7 @@
 use std::io;
 use std::sync::Arc;
 
-use crate::bytecache::{ByteSpanCache, StreamIdentity, SUBRANGE_BYTES};
+use crate::bytecache::{ByteSpanCache, SUBRANGE_BYTES, StreamIdentity};
 
 /// What one ranged fetch learned — the `DataSource.open` +
 /// Content-Range pair the upstream reader consumed.
@@ -97,7 +97,7 @@ impl RangedMediaSource {
             cache,
             url: url.into(),
             headers,
-            key: key.into(),
+            key,
             position: 0,
             length,
             ended: false,
@@ -118,10 +118,10 @@ impl RangedMediaSource {
     /// Fetches the 512 KB chunk containing `offset`, stores it, learns the
     /// length.
     fn fill_chunk(&mut self, offset: u64) -> io::Result<()> {
-        if let Some(len) = self.length {
-            if offset >= len {
-                return Ok(());
-            }
+        if let Some(len) = self.length
+            && offset >= len
+        {
+            return Ok(());
         }
         let chunk_start = (offset / SUBRANGE_BYTES) * SUBRANGE_BYTES;
         let chunk_end_inclusive = chunk_start + SUBRANGE_BYTES - 1;
@@ -137,8 +137,7 @@ impl RangedMediaSource {
                 if let Some(total) = fetched.total_len {
                     self.length = Some(total);
                 }
-                self.cache
-                    .put(&self.key, chunk_start, fetched.data);
+                self.cache.put(&self.key, chunk_start, fetched.data);
                 Ok(())
             }
             Err(RangeFetchError::EndPastPosition { at }) => {
@@ -148,7 +147,7 @@ impl RangedMediaSource {
                 self.length = Some(at);
                 Ok(())
             }
-            Err(RangeFetchError::Io(why)) => Err(io::Error::new(io::ErrorKind::Other, why)),
+            Err(RangeFetchError::Io(why)) => Err(io::Error::other(why)),
         }
     }
 }
@@ -159,10 +158,10 @@ impl io::Read for RangedMediaSource {
             return Ok(0);
         }
         // Past the end: EOF (StreamPcmDecoder.kt:141-142).
-        if let Some(len) = self.length {
-            if self.position >= len {
-                return Ok(0);
-            }
+        if let Some(len) = self.length
+            && self.position >= len
+        {
+            return Ok(0);
         }
         // Serve what the cache covers run by run — the upstream loop's
         // "reading carries on from where it stopped until the request is
@@ -171,10 +170,10 @@ impl io::Read for RangedMediaSource {
         let mut filled = 0usize;
         while filled < buf.len() {
             let cursor = self.position + filled as u64;
-            if let Some(len) = self.length {
-                if cursor >= len {
-                    break;
-                }
+            if let Some(len) = self.length
+                && cursor >= len
+            {
+                break;
             }
             let want = buf.len() - filled;
             if let Some(run) = self.cache.get(&self.key, cursor, want) {
@@ -349,16 +348,12 @@ mod tests {
         // the second chunk 416s and the reader stops there cleanly — the
         // upstream `ended = true; length = offset` path
         // (StreamPcmDecoder.kt:182-188).
-        let bytes: Vec<u8> = (0..SUBRANGE_BYTES + 2048)
-            .map(|i| (i % 13) as u8)
-            .collect();
+        let bytes: Vec<u8> = (0..SUBRANGE_BYTES + 2048).map(|i| (i % 13) as u8).collect();
         let fetcher = MemoryFetcher {
             bytes: Arc::new(bytes.clone()),
             fail_at: vec![(
                 SUBRANGE_BYTES,
-                RangeFetchError::EndPastPosition {
-                    at: SUBRANGE_BYTES,
-                },
+                RangeFetchError::EndPastPosition { at: SUBRANGE_BYTES },
             )],
             hide_total_len: true,
         };

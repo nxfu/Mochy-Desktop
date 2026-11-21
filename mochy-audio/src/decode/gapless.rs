@@ -128,10 +128,10 @@ fn parse_moov<R: Read + Seek>(
     let end = start + len;
     let mut at = start;
     while let Some(header) = read_box_header(reader, end, at)? {
-        if &header.kind == b"trak" {
-            if let Some(info) = parse_trak(reader, header.content_start, header.content_len)? {
-                return Ok(Some(info));
-            }
+        if &header.kind == b"trak"
+            && let Some(info) = parse_trak(reader, header.content_start, header.content_len)?
+        {
+            return Ok(Some(info));
         }
         at = header.next();
         reader.seek(SeekFrom::Start(at))?;
@@ -194,7 +194,11 @@ fn parse_trak<R: Read + Seek>(
     // so this only fires for the common shape where it under-counts the
     // media — the honest `None` covers everything else.
     let padding = media_duration
-        .map(|duration| duration.saturating_sub(priming).saturating_sub(segment_duration))
+        .map(|duration| {
+            duration
+                .saturating_sub(priming)
+                .saturating_sub(segment_duration)
+        })
         .filter(|p| *p > 0);
     Ok(Some(GaplessInfo {
         priming_samples: priming,
@@ -220,19 +224,16 @@ fn parse_mdia<R: Read + Seek>(
                 if version[0] == 1 {
                     let mut buf = [0u8; 32];
                     read_exact_at(reader, sub.content_start, &mut buf)?;
-                    facts.timescale =
-                        u32::from_be_bytes([buf[20], buf[21], buf[22], buf[23]]);
+                    facts.timescale = u32::from_be_bytes([buf[20], buf[21], buf[22], buf[23]]);
                     facts.media_duration = Some(u64::from_be_bytes([
                         buf[24], buf[25], buf[26], buf[27], buf[28], buf[29], buf[30], buf[31],
                     ]));
                 } else {
                     let mut buf = [0u8; 20];
                     read_exact_at(reader, sub.content_start, &mut buf)?;
-                    facts.timescale =
-                        u32::from_be_bytes([buf[12], buf[13], buf[14], buf[15]]);
-                    facts.media_duration = Some(u32::from_be_bytes([
-                        buf[16], buf[17], buf[18], buf[19],
-                    ]) as u64);
+                    facts.timescale = u32::from_be_bytes([buf[12], buf[13], buf[14], buf[15]]);
+                    facts.media_duration =
+                        Some(u32::from_be_bytes([buf[16], buf[17], buf[18], buf[19]]) as u64);
                 }
             }
             b"hdlr" => {
@@ -290,8 +291,7 @@ fn parse_elst(
         let (segment, media_time) = if version == 1 {
             (
                 u64::from_be_bytes([
-                    entry[0], entry[1], entry[2], entry[3], entry[4], entry[5], entry[6],
-                    entry[7],
+                    entry[0], entry[1], entry[2], entry[3], entry[4], entry[5], entry[6], entry[7],
                 ]),
                 i64::from_be_bytes([
                     entry[8], entry[9], entry[10], entry[11], entry[12], entry[13], entry[14],

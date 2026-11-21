@@ -156,23 +156,51 @@ pub fn decide(
 /// Reads interleaved decoder PCM into per-channel f32 planes
 /// (`PrecisionSink.readPlanes`, lines 177-206; the integer scalings are
 /// `-32768f`, `-8388608f`, `/ 2147483648.0` exactly as upstream).
-pub fn read_planes(input: &[u8], encoding: PcmEncoding, channels: usize, planes: &mut [&mut [f32]]) {
-    let frames = input.len() / (encoding.bytes_per_sample() * channels.max(1));
-    for i in 0..frames {
-        for c in 0..channels {
-            let at = (i * channels + c) * encoding.bytes_per_sample();
-            planes[c][i] = match encoding {
-                PcmEncoding::Pcm16 => read_i16le(input, at) as f32 / 32768.0,
-                PcmEncoding::Pcm16Be => read_i16be(input, at) as f32 / 32768.0,
-                PcmEncoding::Pcm24 => read_i24le(input, at) as f32 / 8_388_608.0,
-                PcmEncoding::Pcm24Be => read_i24be(input, at) as f32 / 8_388_608.0,
-                PcmEncoding::Pcm32 => read_i32le(input, at) as f32 / 2_147_483_648.0,
-                PcmEncoding::Pcm32Be => read_i32be(input, at) as f32 / 2_147_483_648.0,
+pub fn read_planes(
+    input: &[u8],
+    encoding: PcmEncoding,
+    channels: usize,
+    planes: &mut [&mut [f32]],
+) {
+    let frame_bytes = encoding.bytes_per_sample() * channels.max(1);
+    for (frame, chunk) in input.chunks_exact(frame_bytes).enumerate() {
+        for (plane, sample_bytes) in planes
+            .iter_mut()
+            .zip(chunk.chunks_exact(encoding.bytes_per_sample()))
+            .take(channels)
+        {
+            plane[frame] = match encoding {
+                PcmEncoding::Pcm16 => {
+                    i16::from_le_bytes([sample_bytes[0], sample_bytes[1]]) as f32 / 32768.0
+                }
+                PcmEncoding::Pcm16Be => {
+                    i16::from_be_bytes([sample_bytes[0], sample_bytes[1]]) as f32 / 32768.0
+                }
+                PcmEncoding::Pcm24 => read_i24le(sample_bytes, 0) as f32 / 8_388_608.0,
+                PcmEncoding::Pcm24Be => read_i24be(sample_bytes, 0) as f32 / 8_388_608.0,
+                PcmEncoding::Pcm32 => {
+                    i32::from_le_bytes([
+                        sample_bytes[0],
+                        sample_bytes[1],
+                        sample_bytes[2],
+                        sample_bytes[3],
+                    ]) as f32
+                        / 2_147_483_648.0
+                }
+                PcmEncoding::Pcm32Be => {
+                    i32::from_be_bytes([
+                        sample_bytes[0],
+                        sample_bytes[1],
+                        sample_bytes[2],
+                        sample_bytes[3],
+                    ]) as f32
+                        / 2_147_483_648.0
+                }
                 PcmEncoding::Float => f32::from_le_bytes([
-                    input[at],
-                    input[at + 1],
-                    input[at + 2],
-                    input[at + 3],
+                    sample_bytes[0],
+                    sample_bytes[1],
+                    sample_bytes[2],
+                    sample_bytes[3],
                 ]),
             };
         }
@@ -220,30 +248,16 @@ impl TpdfDither {
     }
 }
 
-fn read_i16le(b: &[u8], at: usize) -> i16 {
-    i16::from_le_bytes([b[at], b[at + 1]])
-}
-fn read_i16be(b: &[u8], at: usize) -> i16 {
-    i16::from_be_bytes([b[at], b[at + 1]])
-}
 fn read_i24le(b: &[u8], at: usize) -> i32 {
     // (b[at] & 0xFF) | ((b[at+1] & 0xFF) << 8) | (signed b[at+2] << 16)
     // — the high byte sign-extends exactly like the Kotlin `toInt()` at
     // PrecisionSink.kt:188.
-    (u32::from(b[at])
-        | (u32::from(b[at + 1]) << 8)
-        | ((b[at + 2] as i8 as u32) << 16)) as i32
+    (u32::from(b[at]) | (u32::from(b[at + 1]) << 8) | ((b[at + 2] as i8 as u32) << 16)) as i32
 }
 fn read_i24be(b: &[u8], at: usize) -> i32 {
     // (signed b[at] << 16) | ((b[at+1] & 0xFF) << 8) | (b[at+2] & 0xFF)
     // (PrecisionSink.kt:193).
     ((b[at] as i8 as u32) << 16 | (u32::from(b[at + 1]) << 8) | u32::from(b[at + 2])) as i32
-}
-fn read_i32le(b: &[u8], at: usize) -> i32 {
-    i32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
-}
-fn read_i32be(b: &[u8], at: usize) -> i32 {
-    i32::from_be_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
 }
 
 #[cfg(test)]
@@ -253,7 +267,13 @@ mod tests {
     #[test]
     fn passthrough_when_nothing_applies() {
         // A 44.1 kHz 16-bit song, no knobs: nothing reworked, its own rate.
-        let plan = decide(44_100, 2, PcmEncoding::Pcm16, &PrecisionKnobs::default(), None);
+        let plan = decide(
+            44_100,
+            2,
+            PcmEncoding::Pcm16,
+            &PrecisionKnobs::default(),
+            None,
+        );
         assert!(!plan.needs_resampler);
         assert_eq!(plan.output_rate, 44_100);
         assert!(!plan.output_float);
@@ -286,7 +306,13 @@ mod tests {
         assert!(plan.output_float);
         // The existing resampler is kept when the rates already match
         // (PrecisionSink.kt:76) — the song still arrives at 48 kHz.
-        let kept = decide(44_100, 2, PcmEncoding::Float, &knobs, Some((44_100, 48_000)));
+        let kept = decide(
+            44_100,
+            2,
+            PcmEncoding::Float,
+            &knobs,
+            Some((44_100, 48_000)),
+        );
         assert!(!kept.needs_resampler);
         assert_eq!(kept.output_rate, 48_000);
         assert_eq!(kept.resample_to, Some(48_000));
@@ -327,10 +353,16 @@ mod tests {
         assert!(!plan.output_float);
         assert!(!plan.needs_resampler);
         // Hi-res + float allowed: float.
-        let plan2 = decide(44_100, 2, PcmEncoding::Pcm24, &PrecisionKnobs {
-            float_allowed: true,
-            ..Default::default()
-        }, None);
+        let plan2 = decide(
+            44_100,
+            2,
+            PcmEncoding::Pcm24,
+            &PrecisionKnobs {
+                float_allowed: true,
+                ..Default::default()
+            },
+            None,
+        );
         assert!(plan2.output_float);
     }
 
@@ -340,7 +372,12 @@ mod tests {
         let mut left = [0f32; 1];
         let mut right = [0f32; 1];
         let mut planes: [&mut [f32]; 2] = [&mut left, &mut right];
-        read_planes(&[0x00, 0x80, 0xFF, 0x7F], PcmEncoding::Pcm16, 2, &mut planes);
+        read_planes(
+            &[0x00, 0x80, 0xFF, 0x7F],
+            PcmEncoding::Pcm16,
+            2,
+            &mut planes,
+        );
         assert_eq!(left[0], -1.0);
         assert_eq!(right[0], 32767.0 / 32768.0);
 
@@ -350,11 +387,21 @@ mod tests {
         assert_eq!(mono[0], -8_388_608.0 / 8_388_608.0);
         let mut mono2 = [0f32; 1];
         let mut planes: [&mut [f32]; 1] = [&mut mono2];
-        read_planes(&[0x00, 0x00, 0x00, 0x80], PcmEncoding::Pcm32, 1, &mut planes);
+        read_planes(
+            &[0x00, 0x00, 0x00, 0x80],
+            PcmEncoding::Pcm32,
+            1,
+            &mut planes,
+        );
         assert_eq!(mono2[0], -2_147_483_648.0 / 2_147_483_648.0);
         let mut mono3 = [0f32; 1];
         let mut planes: [&mut [f32]; 1] = [&mut mono3];
-        read_planes(&[0x00, 0x00, 0x00, 0x00], PcmEncoding::Float, 1, &mut planes);
+        read_planes(
+            &[0x00, 0x00, 0x00, 0x00],
+            PcmEncoding::Float,
+            1,
+            &mut planes,
+        );
         assert_eq!(mono3[0], 0.0);
     }
 
@@ -366,11 +413,15 @@ mod tests {
         let mut counts = [0usize; 3];
         for _ in 0..10_000 {
             let v = dither.dither_to_16(0.0);
-            assert!(v >= -1 && v <= 1, "silence wandered to {v}");
+            assert!((-1..=1).contains(&v), "silence wandered to {v}");
             counts[(v + 1) as usize] += 1;
         }
         assert!(counts[1] > 6_000, "not centered: {:?}", counts);
-        assert!(counts[0] > 500 && counts[2] > 500, "not triangular: {:?}", counts);
+        assert!(
+            counts[0] > 500 && counts[2] > 500,
+            "not triangular: {:?}",
+            counts
+        );
         // Full-scale and beyond never clip crackle: soft-clamped to 0.98 +
         // tanh tail, clamped to the i16 range.
         for _ in 0..1000 {
@@ -400,6 +451,9 @@ mod tests {
                 _ => panic!("dither wandered to {v}"),
             }
         }
-        assert!(above > 1000 && below > 1000, "not triangular: {above}/{below}");
+        assert!(
+            above > 1000 && below > 1000,
+            "not triangular: {above}/{below}"
+        );
     }
 }

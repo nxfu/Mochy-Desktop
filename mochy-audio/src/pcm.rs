@@ -63,18 +63,12 @@ pub fn convert(
             PcmEncoding::Pcm16Be => (i16::from_be_bytes([input[at], input[at + 1]]) as i32) << 16,
             PcmEncoding::Pcm24 => read_i24le(input, at) << 8,
             PcmEncoding::Pcm24Be => read_i24be(input, at) << 8,
-            PcmEncoding::Pcm32 => i32::from_le_bytes([
-                input[at],
-                input[at + 1],
-                input[at + 2],
-                input[at + 3],
-            ]),
-            PcmEncoding::Pcm32Be => i32::from_be_bytes([
-                input[at],
-                input[at + 1],
-                input[at + 2],
-                input[at + 3],
-            ]),
+            PcmEncoding::Pcm32 => {
+                i32::from_le_bytes([input[at], input[at + 1], input[at + 2], input[at + 3]])
+            }
+            PcmEncoding::Pcm32Be => {
+                i32::from_be_bytes([input[at], input[at + 1], input[at + 2], input[at + 3]])
+            }
             PcmEncoding::Float => {
                 let value = f64::from(f32::from_le_bytes([
                     input[at],
@@ -91,15 +85,13 @@ pub fn convert(
             }
         };
         at += in_bytes;
-        put_sample(
-            output,
-            written,
-            if muted { 0 } else { sample },
-            out_bits,
-        );
+        put_sample(output, written, if muted { 0 } else { sample }, out_bits);
         written += out_bytes;
     }
-    ConvertOutcome { bytes: written, exact }
+    ConvertOutcome {
+        bytes: written,
+        exact,
+    }
 }
 
 /// The outcome of one packing pass.
@@ -142,9 +134,7 @@ fn put_sample(output: &mut [u8], at: usize, sample: i32, bits: u32) {
 }
 
 fn read_i24le(b: &[u8], at: usize) -> i32 {
-    (u32::from(b[at])
-        | (u32::from(b[at + 1]) << 8)
-        | ((b[at + 2] as i8 as u32) << 16)) as i32
+    (u32::from(b[at]) | (u32::from(b[at + 1]) << 8) | ((b[at + 2] as i8 as u32) << 16)) as i32
 }
 
 fn read_i24be(b: &[u8], at: usize) -> i32 {
@@ -191,7 +181,9 @@ mod tests {
         assert!(outcome.exact);
         assert_eq!(outcome.bytes, 10);
         let got: Vec<i16> = output[..10]
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|c| i16::from_le_bytes([c[0], c[1]]))
             .collect();
         assert_eq!(got, vec![-1, 0, 1, i16::MAX, i16::MIN]);
@@ -223,8 +215,10 @@ mod tests {
         let outcome = convert(&bytes, PcmEncoding::Float, 1, 16, 16, &mut output, false);
         assert!(!outcome.exact);
         // Still rounds to the nearest step: 0.5 × 32768 + 0.5 = 16384.5 → 16385 (round-half-away).
-        assert!(i16::from_le_bytes([output[0], output[1]]) == 16_384
-            || i16::from_le_bytes([output[0], output[1]]) == 16_385);
+        assert!(
+            i16::from_le_bytes([output[0], output[1]]) == 16_384
+                || i16::from_le_bytes([output[0], output[1]]) == 16_385
+        );
     }
 
     #[test]
@@ -267,7 +261,10 @@ mod tests {
         let mut b = vec![0u8; 16];
         let oa = pack_float_block(&block, 16, 16, &mut a, false);
         let ob = convert(
-            &block.iter().flat_map(|s| s.to_le_bytes()).collect::<Vec<u8>>(),
+            &block
+                .iter()
+                .flat_map(|s| s.to_le_bytes())
+                .collect::<Vec<u8>>(),
             PcmEncoding::Float,
             1,
             16,

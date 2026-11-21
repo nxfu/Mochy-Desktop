@@ -9,7 +9,7 @@
 //! timestamps.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{mpsc::Sender, Arc};
+use std::sync::{Arc, mpsc::Sender};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
@@ -57,8 +57,7 @@ pub fn open_shared(
         // Prefer f32 over i16; prefer the request's rate over the
         // device default.
         let prefers = chosen.is_none()
-            || (chosen.is_some_and(|(_, f)| f == OutputFormat::I16)
-                && format == OutputFormat::F32);
+            || (chosen.is_some_and(|(_, f)| f == OutputFormat::I16) && format == OutputFormat::F32);
         if !prefers {
             continue;
         }
@@ -67,7 +66,9 @@ pub fn open_shared(
         let config = if rate_ok && request.rate != 0 {
             supported.with_sample_rate(request.rate).config()
         } else {
-            supported.with_sample_rate(supported.max_sample_rate()).config()
+            supported
+                .with_sample_rate(supported.max_sample_rate())
+                .config()
         };
         chosen = Some((config, format));
         if rate_ok && format == OutputFormat::F32 {
@@ -198,12 +199,20 @@ mod tests {
             device: None,
         };
         let (events, _rx) = std::sync::mpsc::channel();
-        match open_shared(&request, Box::new(Silence), events, Arc::new(AtomicU64::new(0))) {
+        match open_shared(
+            &request,
+            Box::new(Silence),
+            events,
+            Arc::new(AtomicU64::new(0)),
+        ) {
             Ok(stream) => {
                 // If a device exists: a shared f32 (or dithered 16-bit)
                 // stream with a sane report.
                 assert_eq!(stream.report.sharing, Sharing::Shared);
-                assert!(stream.output_delay_us() >= 0);
+                // u64 microseconds — sanity-check the magnitude (a shared
+                // stream buffers at most a few hundred ms), the sign is
+                // already in the type.
+                assert!(stream.output_delay_us() < 60_000_000);
                 stream.stop();
             }
             Err(OpenError::Failed(why)) => {

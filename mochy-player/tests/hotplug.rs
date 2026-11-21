@@ -60,7 +60,7 @@ fn device_removed_mid_song_reopens_and_preserves_position() {
         id: "speakers".into(),
         exact: true,
     });
-    let router = Arc::new(OutputRouter::new(backend.clone()));
+    let router = OutputRouter::new(backend.clone());
     let (core, mut mixer) = PlayerCore::new(48_000, 1);
 
     // Play a long song.

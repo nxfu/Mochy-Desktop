@@ -25,9 +25,9 @@ pub mod gapless;
 use std::io::{Read, Seek, SeekFrom};
 use std::sync::OnceLock;
 
+use symphonia::core::codecs::CodecParameters;
 use symphonia::core::codecs::audio::{AudioDecoder, AudioDecoderOptions};
 use symphonia::core::codecs::registry::CodecRegistry;
-use symphonia::core::codecs::CodecParameters;
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, FormatReader, SeekMode, SeekTo, TrackType};
 use symphonia::core::io::MediaSource;
@@ -143,7 +143,12 @@ impl TrackDecoder {
             hint.with_extension(extension);
         }
         let format = symphonia::default::get_probe()
-            .probe(&hint, mss, FormatOptions::default(), MetadataOptions::default())
+            .probe(
+                &hint,
+                mss,
+                FormatOptions::default(),
+                MetadataOptions::default(),
+            )
             .map_err(|e| DecodeError::Init(e.to_string()))?;
         let track = format
             .default_track(TrackType::Audio)
@@ -173,8 +178,9 @@ impl TrackDecoder {
         );
         let (skip_remaining, emit_remaining) = match &gapless {
             Some(info) if info.timescale == sample_rate => {
-                let playable = total_samples
-                    .map(|total| total.saturating_sub(info.priming_samples + info.padding_samples.unwrap_or(0)));
+                let playable = total_samples.map(|total| {
+                    total.saturating_sub(info.priming_samples + info.padding_samples.unwrap_or(0))
+                });
                 (info.priming_samples, playable)
             }
             _ => (0, total_samples),
@@ -227,7 +233,7 @@ impl TrackDecoder {
                 Ok(Some(packet)) => packet,
                 Ok(None) => return Ok(None),
                 Err(symphonia::core::errors::Error::ResetRequired) => {
-                    return Err(DecodeError::Decode("decoder reset required".into()))
+                    return Err(DecodeError::Decode("decoder reset required".into()));
                 }
                 Err(e) => return Err(DecodeError::Decode(e.to_string())),
             };
@@ -339,7 +345,8 @@ impl TrackDecoder {
         // Re-arm the trims for the new position: the demuxer landed at or
         // before the target, packets between here and the target are
         // skipped by the leading-trim accounting.
-        self.skip_remaining = landed_container.saturating_sub(self.trim_offset() + landed_post_trim);
+        self.skip_remaining =
+            landed_container.saturating_sub(self.trim_offset() + landed_post_trim);
         if let Some(playable) = self.emit_remaining_origin() {
             self.emit_remaining = Some(playable.saturating_sub(landed_post_trim));
         }
@@ -357,7 +364,11 @@ impl TrackDecoder {
 
     /// The total playable samples after both trims, when known.
     fn emit_remaining_origin(&self) -> Option<u64> {
-        let info = self.info.gapless.as_ref().filter(|_| self.info.gapless_applied)?;
+        let info = self
+            .info
+            .gapless
+            .as_ref()
+            .filter(|_| self.info.gapless_applied)?;
         Some(
             self.info
                 .total_samples?
@@ -471,7 +482,7 @@ mod tests {
         let (_, samples) = decode_all(wav_bytes(48_000, 5000, 1));
         let mut expected = Vec::new();
         for i in 0..5000 {
-            let value = ((i as i32 * 97) % 8000 - 4000) as i16;
+            let value = ((i * 97) % 8000 - 4000) as i16;
             expected.push(f32::from(value) / 32768.0f32);
         }
         assert_eq!(samples.len(), expected.len());
@@ -491,7 +502,7 @@ mod tests {
         let mut cursor = 0u64;
         while let Some(block) = decoder.decode_block(333).unwrap() {
             assert_eq!(block.first_sample, cursor);
-            cursor += (block.samples.len() / 1) as u64;
+            cursor += block.samples.len() as u64;
         }
         assert_eq!(cursor, 10_000);
     }

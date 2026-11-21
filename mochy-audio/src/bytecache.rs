@@ -72,6 +72,12 @@ pub struct ByteSpanCache {
     inner: Mutex<Inner>,
 }
 
+impl Default for ByteSpanCache {
+    fn default() -> Self {
+        ByteSpanCache::new()
+    }
+}
+
 impl ByteSpanCache {
     /// A cache with the default 1024 MB budget.
     pub fn new() -> ByteSpanCache {
@@ -124,7 +130,6 @@ impl ByteSpanCache {
             }
         };
         let mut inner = self.lock();
-        let len = data.len() as u64;
         store_span(&mut inner, key, start, data, 0);
         // LRU eviction to fit the budget (LeastRecentlyUsedCacheEvictor:
         // least recently used spans go first, the just-stored one last).
@@ -169,11 +174,7 @@ impl ByteSpanCache {
                 break;
             }
         }
-        if whole.is_empty() {
-            None
-        } else {
-            Some(whole)
-        }
+        if whole.is_empty() { None } else { Some(whole) }
     }
 
     /// Whether the key holds a full-span cover of `[start, start+len)`.
@@ -228,7 +229,9 @@ impl ByteSpanCache {
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         // A poisoned cache lock means a panic mid-write; treat the cache as
         // recoverable (stale data at worst — it is a cache).
-        self.inner.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
@@ -264,11 +267,11 @@ fn evict_least_recently_used(inner: &mut Inner, keep_key: &str) -> bool {
         if key == keep_key {
             continue;
         }
-        if let Some(oldest) = inner.streams[key].1.iter().map(|s| s.last_use).min() {
-            if oldest < victim_use {
-                victim_use = oldest;
-                victim_key = Some(key.clone());
-            }
+        if let Some(oldest) = inner.streams[key].1.iter().map(|s| s.last_use).min()
+            && oldest < victim_use
+        {
+            victim_use = oldest;
+            victim_key = Some(key.clone());
         }
     }
     let Some(key) = victim_key else {
@@ -313,9 +316,7 @@ mod tests {
         assert_eq!(got.len(), SUBRANGE_BYTES as usize);
         assert!(got.iter().all(|b| *b == 1));
         // Straddling read across both spans.
-        let straddle = cache
-            .get("song", SUBRANGE_BYTES - 4, 8)
-            .unwrap();
+        let straddle = cache.get("song", SUBRANGE_BYTES - 4, 8).unwrap();
         assert_eq!(&straddle[..4], &[1, 1, 1, 1]);
         assert_eq!(&straddle[4..], &[2, 2, 2, 2]);
         // Partial miss: past the stored bytes.
@@ -367,7 +368,10 @@ mod tests {
         cache.put("c", 0, vec![3u8; 2048]);
         assert_eq!(cache.bytes_used(), 4096);
         assert!(cache.get("a", 0, 2048).is_some(), "recently used survives");
-        assert!(cache.get("b", 0, 2048).is_none(), "least recently used evicted");
+        assert!(
+            cache.get("b", 0, 2048).is_none(),
+            "least recently used evicted"
+        );
         assert!(cache.get("c", 0, 2048).is_some());
     }
 

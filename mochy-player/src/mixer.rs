@@ -18,13 +18,13 @@
 //! scratch — no locks, no allocation, no drops of anything but plain
 //! data.
 
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
-use crate::clock::{playback_clock, ClockWriter, PlaybackClock};
+use crate::clock::{ClockWriter, PlaybackClock, playback_clock};
 use crate::fade::GainAutomation;
 use crate::mailbox::ParamMailbox;
-use crate::ring::{voice_ring, RingReader, RingWriter};
+use crate::ring::{RingReader, RingWriter, voice_ring};
 
 /// Voice slots: upstream never ran more than a couple of players at once
 /// (a crossfade's two, plus crossmix arming); 8 covers the queue
@@ -265,24 +265,23 @@ impl Mixer {
                 }
             }
             if let Some(ramp) = self.ramps[slot].as_ref()
-                && ramp.is_finished() {
-                    self.gains[slot] = {
-                        
-                        ramp.current_gain()
-                    };
-                    self.ramps[slot] = None;
-                }
+                && ramp.is_finished()
+            {
+                self.gains[slot] = ramp.current_gain();
+                self.ramps[slot] = None;
+            }
             // 4. Position bookkeeping: only frames that actually sounded.
             let played = block_played;
-            let played_total = shared.played_out.fetch_add(played as u64, Ordering::AcqRel)
-                + played as u64;
+            let played_total =
+                shared.played_out.fetch_add(played as u64, Ordering::AcqRel) + played as u64;
             let base = shared.base_media_sample.load(Ordering::Acquire);
             let media_rate = shared.media_rate.load(Ordering::Acquire);
             let rate_out = shared.rate_out.load(Ordering::Acquire);
             if shared.primary.load(Ordering::Acquire) {
                 any_primary = true;
                 playing = !paused && (taken > 0 || !shared.eof.load(Ordering::Acquire));
-                let media = base as f64 + played_total as f64 * f64::from(media_rate) / f64::from(rate_out);
+                let media =
+                    base as f64 + played_total as f64 * f64::from(media_rate) / f64::from(rate_out);
                 primary_position = Some(media / f64::from(media_rate));
             }
             // End-of-voice: the source is done and the ring drained.
@@ -308,11 +307,8 @@ impl Mixer {
                 .position(|v| v.primary.load(Ordering::Acquire))
                 .map(|slot| self.voices[slot].media_rate.load(Ordering::Acquire))
                 .unwrap_or(44_100);
-            self.clock_writer.publish(
-                crate::clock::Seconds(position),
-                rate,
-                playing,
-            );
+            self.clock_writer
+                .publish(crate::clock::Seconds(position), rate, playing);
         } else {
             let _ = any_primary;
         }
@@ -397,7 +393,9 @@ mod tests {
         let (mut mixer, _params, writers) = mono_mixer();
         mixer.voices[0].active.store(true, Ordering::Release);
         mixer.voices[0].primary.store(true, Ordering::Release);
-        let frames: Vec<f32> = (0..2400).map(|i| (i as f32 / 2400.0) * 0.5 - 0.25).collect();
+        let frames: Vec<f32> = (0..2400)
+            .map(|i| (i as f32 / 2400.0) * 0.5 - 0.25)
+            .collect();
         writers[0].push(&frames);
         let mut out = vec![0f32; 2400];
         mixer.render(&mut out);
