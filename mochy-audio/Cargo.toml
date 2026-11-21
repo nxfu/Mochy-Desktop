@@ -29,17 +29,37 @@ workspace = true
 # Optional video decode backend (blueprint ch. 17, Q5); symphonia stays the
 # default audio path either way:
 #   video           -> ffmpeg-next exotic-codec backend
+# Optional HE-AAC decode through the vendored Fraunhofer FDK AAC library
+# (Phase 08): symphonia's native AAC handles AAC-LC; YouTube's rare HE-AAC
+# streams decode through the FDK adapter instead. OFF by default because
+# fdk-aac-sys builds the C++ library under its bespoke (permissive)
+# license — enabling it adds a NOTICE disclosure (PORT_SPEC §9):
+#   fdk-aac         -> symphonia-adapter-fdk-aac
 [features]
 exclusive-win = ["dep:wasapi"]
 exclusive-linux = ["dep:alsa"]
 usb-uac = ["dep:rusb"]
 video = ["dep:ffmpeg-next"]
+fdk-aac = ["dep:symphonia-adapter-fdk-aac"]
 
 [dependencies]
-# Nothing compiled by default in Phase 01; the four optional backends above
-# are the exception so the flag contract exists from day one.
+# Phase 08 (mochy-player decode pipeline): the symphonia demux/decode set
+# for YouTube WebM/MP4 (AAC native, Opus via the adapter), downloaded
+# Ogg-Opus, Monochrome FLAC and local MP3/ALAC/WAV/PCM, exactly the
+# workspace pin (PORT_SPEC §9).
+symphonia = { workspace = true }
+symphonia-adapter-libopus = { workspace = true }
+symphonia-adapter-fdk-aac = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+# The shared output stream (blueprint ch. 11: "One cpal callback pulls from
+# a master ring"). Always on: it is the default output mode on every OS.
+cpal = { workspace = true }
+
+# Feature-gated backends (contract above); nothing here compiles unless the
+# matching feature is on AND the target OS matches the cfg gates in
+# src/output/ and src/usb/.
 wasapi = { workspace = true, optional = true }
 alsa = { workspace = true, optional = true }
 rusb = { workspace = true, optional = true }
 ffmpeg-next = { workspace = true, optional = true }
-

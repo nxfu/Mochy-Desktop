@@ -179,6 +179,14 @@ symphonia = { version = "0.6.1", features = [
 ] }
 # libopus adapter for symphonia (no pure-Rust Opus decoder — blueprint ch. 13).
 symphonia-adapter-libopus = "0.3.0"
+# FDK AAC adapter for symphonia — optional HE-AAC decode (Phase 08's
+# `fdk-aac` feature on mochy-audio). Same author/line as the libopus
+# adapter (aschey/symphonia-adapters). OFF by default: fdk-aac-sys vendors
+# the Fraunhofer FDK AAC library under its bespoke (permissive) license,
+# which must be disclosed in shipped notices when the feature is enabled —
+# see PORT_SPEC §9 "Licensing constraints". Verified on crates.io
+# 2026-11-22: 0.2.0 current.
+symphonia-adapter-fdk-aac = "0.2.0"
 # Analyzers (crossmix, lyric auto-sync, spectrum) and rate conversion.
 rustfft = "6.4.1"
 rubato = "5.1.0"
