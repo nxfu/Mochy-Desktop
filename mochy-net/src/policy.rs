@@ -180,10 +180,17 @@ mod tests {
         assert_eq!(policy.decision(&NetError::Offline, 0), RetryDecision::Abort);
     }
 
+    // the guard below is HELD ACROSS AWAITS on purpose: it serializes
+    // the whole test body against the tests that flip the global
+    // offline flag (see `test_support`)
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn retry_execution_gives_up_after_three_io_failures() {
         use std::sync::Arc;
         use std::sync::atomic::{AtomicU32, Ordering};
+        // retry_on_io_errors reads the process-global offline flag at
+        // entry: serialize against the tests that flip it
+        let _guard = crate::test_support::OFFLINE_FLAG_LOCK.lock().unwrap();
         let policy = RetryPolicy::upstream();
         let calls = Arc::new(AtomicU32::new(0));
         let counter = Arc::clone(&calls);
@@ -199,10 +206,14 @@ mod tests {
         assert_eq!(calls.load(Ordering::SeqCst), 3, "exactly three attempts");
     }
 
+    // see retry_execution_gives_up_after_three_io_failures: the guard
+    // is held across awaits on purpose
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn retry_execution_succeeds_on_second_attempt() {
         use std::sync::Arc;
         use std::sync::atomic::{AtomicU32, Ordering};
+        let _guard = crate::test_support::OFFLINE_FLAG_LOCK.lock().unwrap();
         let policy = RetryPolicy::upstream();
         let calls = Arc::new(AtomicU32::new(0));
         let counter = Arc::clone(&calls);
@@ -222,10 +233,14 @@ mod tests {
         assert_eq!(calls.load(Ordering::SeqCst), 2);
     }
 
+    // see retry_execution_gives_up_after_three_io_failures: the guard
+    // is held across awaits on purpose
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn offline_flag_gates_before_first_attempt() {
         use std::sync::Arc;
         use std::sync::atomic::{AtomicU32, Ordering};
+        let _guard = crate::test_support::OFFLINE_FLAG_LOCK.lock().unwrap();
         offline::set_offline(true);
         let policy = RetryPolicy::upstream();
         let calls = Arc::new(AtomicU32::new(0));

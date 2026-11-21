@@ -60,8 +60,10 @@ pub struct StreamingData {
     pub formats: Option<Vec<Format>>,
     #[serde(default)]
     pub adaptive_formats: Vec<Format>,
+    /// `expiresInSeconds: Int?` — absent means the walk skips the
+    /// client (a zero would be a dead link, not a missing one).
     #[serde(default)]
-    pub expires_in_seconds: i64,
+    pub expires_in_seconds: Option<i64>,
 }
 
 /// `PlayerResponse.kt:42-66` — one stream format.

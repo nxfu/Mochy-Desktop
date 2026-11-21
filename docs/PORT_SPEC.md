@@ -337,7 +337,7 @@ own prompts — PROGRESS.md is updated when they are.
 | 05 | M1 | `mochy-net` (reqwest factory, proxy/DoH/IP-version, response cache, offline flag) + innertube transport (`InnerTube.kt` port) | — |
 | 06 | M1 | `mochy-innertube` models + `pages/` parsers (21 + 2 glue), search/browse/album/artist/playlist | — |
 | 07 | M1 | 18-client registry, auth (SAPISIDHASH, cookie, visitor data), wry login window, account menu | — |
-| 08 | M1 | Stream resolution: client walk, format ranking, EJS n-solver (rquickjs), PO tokens (rustypipe-botguard), ranged-GET validation → **CP M1** | signed-out browse/search parity; stream URL validates |
+| 08 | M1 | **Retitled by its prompt:** stream resolution landed as the Phase 06 prompt's task (client walk, format ranking, EJS n-solver, in-process PO tokens — rustypipe-botguard studied, not depended on; see HANDOFF ## Phase 06 decision 2) → **CP M1** | signed-out browse/search parity; stream URL validates (offline suites; live run behind `--features live`) |
 | 09 | M2 | `mochy-audio` decode pipeline (symphonia + adapters, ranged byte cache, stale-splice eviction) | — |
 | 10 | M2 | `mochy-player` PlayerCore (one mixer, N voices, PlaybackClock), QueueMachine (7 queue types, manual anchoring, runway, shuffle surgery, persistence), ErrorPolicy | — |
 | 11 | M2 | OutputRouter (cpal shared + `exclusive-win`/`exclusive-linux`), device selection + hotplug → **CP M2** | radio plays end-to-end |

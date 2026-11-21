@@ -1,0 +1,22 @@
+{
+  "_provenance": {
+    "player_hash": "631d3938",
+    "player_url": "https://www.youtube.com/s/player/631d3938/player_ias.vflset/en_GB/base.js",
+    "signature_timestamp": 20529,
+    "recorded": "2026-11-21",
+    "vectors_from": "https://github.com/yt-dlp/ejs src/yt/solver/test/tests.ts (entry '631d3938')",
+    "trimming": "the 2,706,729-byte player was delta-debug trimmed to the 68,139-byte fixture using the full vendored EJS pipeline as the oracle: after every removal both the n and the sig challenge had to keep solving to the recorded outputs; 76 of 13,284 IIFE-body statements remain"
+  },
+  "n": [
+    {
+      "input": "KBx1qz7jMhxELa8c",
+      "expected": "ttPvh7WIptsgSw"
+    }
+  ],
+  "sig": [
+    {
+      "input": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdef",
+      "expected": "\u0019\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0000\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abc"
+    }
+  ]
+}

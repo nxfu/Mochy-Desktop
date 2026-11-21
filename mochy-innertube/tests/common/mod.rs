@@ -244,9 +244,16 @@ pub mod serve {
         String::from_utf8_lossy(&out).into_owned()
     }
 
-    /// Serve `responses.len()` requests, each answered with the
-    /// corresponding canned response, then shut down. Returns the listen
-    /// address and the captured requests.
+    /// Serve the canned `responses` **in arrival order** — the first
+    /// request to complete its head receives the first response, and
+    /// so on — and record every request. Connections are kept alive
+    /// (the harness answers several requests per connection, like a
+    /// real server); once the script is exhausted further requests
+    /// have their connections closed mid-wait, which reads as the
+    /// transport's IO failure class.
+    ///
+    /// The returned handle resolves when every scripted response has
+    /// been served.
     pub async fn serve_responses(
         responses: Vec<String>,
     ) -> (
@@ -257,47 +264,78 @@ pub mod serve {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         let captured: Arc<Mutex<Vec<CapturedRequest>>> = Arc::new(Mutex::new(Vec::new()));
-        let seen = Arc::clone(&captured);
+        let queue: Arc<Mutex<std::collections::VecDeque<String>>> =
+            Arc::new(Mutex::new(responses.into()));
+        // "the script is fully served" is a LEVEL, not an edge: a
+        // `Notify` loses the wakeup when no task happens to be parked
+        // on `notified()` at the exact moment the last response is
+        // written (the accept loop is then busy spawning a handler),
+        // which hung `server.await` forever. `watch` keeps the value.
+        let (done_tx, mut done_rx) = tokio::sync::watch::channel(false);
+        let (seen, queued) = (Arc::clone(&captured), Arc::clone(&queue));
         let handle = tokio::spawn(async move {
-            for response in responses {
-                let (mut socket, _) = match listener.accept().await {
-                    Ok(pair) => pair,
-                    Err(_) => break,
-                };
-                let mut head = Vec::new();
-                let mut buf = [0u8; 8192];
-                // read the head, then exactly content-length body bytes
-                loop {
-                    let n = socket.read(&mut buf).await.unwrap_or(0);
-                    if n == 0 {
-                        break;
-                    }
-                    head.extend_from_slice(&buf[..n]);
-                    let text = String::from_utf8_lossy(&head).into_owned();
-                    if let Some(split) = text.find("\r\n\r\n") {
-                        let content_length = text
-                            .lines()
-                            .find_map(|line| {
-                                let (k, v) = line.split_once(':')?;
-                                if k.trim().eq_ignore_ascii_case("content-length") {
-                                    v.trim().parse::<usize>().ok()
-                                } else {
-                                    None
-                                }
-                            })
-                            .unwrap_or(0);
-                        if head.len() >= split + 4 + content_length {
+            loop {
+                tokio::select! {
+                    changed = done_rx.changed() => {
+                        if changed.is_err() || *done_rx.borrow() {
                             break;
                         }
                     }
+                    accepted = listener.accept() => {
+                        let Ok((socket, _)) = accepted else { break };
+                        let (seen, queued, done_tx) =
+                            (Arc::clone(&seen), Arc::clone(&queued), done_tx.clone());
+                        tokio::spawn(async move {
+                            let mut socket = socket;
+                            loop {
+                                let mut head = Vec::new();
+                                let mut buf = [0u8; 8192];
+                                // read the head, then exactly
+                                // content-length body bytes
+                                loop {
+                                    let n = socket.read(&mut buf).await.unwrap_or(0);
+                                    if n == 0 {
+                                        return; // client closed the connection
+                                    }
+                                    head.extend_from_slice(&buf[..n]);
+                                    let text = String::from_utf8_lossy(&head).into_owned();
+                                    if let Some(split) = text.find("\r\n\r\n") {
+                                        let content_length = text
+                                            .lines()
+                                            .find_map(|line| {
+                                                let (k, v) = line.split_once(':')?;
+                                                if k.trim().eq_ignore_ascii_case("content-length") {
+                                                    v.trim().parse::<usize>().ok()
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .unwrap_or(0);
+                                        if head.len() >= split + 4 + content_length {
+                                            break;
+                                        }
+                                    }
+                                }
+                                let head_text = String::from_utf8_lossy(&head).into_owned();
+                                seen.lock()
+                                    .unwrap()
+                                    .push(CapturedRequest { head: head_text });
+                                let next = queued.lock().unwrap().pop_front();
+                                match next {
+                                    Some(response) => {
+                                        socket.write_all(response.as_bytes()).await.unwrap();
+                                        socket.flush().await.unwrap();
+                                        if queued.lock().unwrap().is_empty() {
+                                            // the script is fully served
+                                            let _ = done_tx.send(true);
+                                        }
+                                    }
+                                    None => return, // script exhausted: close
+                                }
+                            }
+                        });
+                    }
                 }
-                let head_text = String::from_utf8_lossy(&head).into_owned();
-                seen.lock()
-                    .unwrap()
-                    .push(CapturedRequest { head: head_text });
-                socket.write_all(response.as_bytes()).await.unwrap();
-                socket.flush().await.unwrap();
-                let _ = socket.shutdown().await;
             }
         });
         (addr, captured, handle)

@@ -45,6 +45,22 @@ pub use offline::{OfflineFlag, set_offline};
 pub use policy::{RetryDecision, RetryPolicy, retry_on_io_errors};
 pub use proxy::{ProxyConfig, ProxyKind};
 
+/// Serializes the unit tests that flip or read the process-global offline
+/// flag.
+///
+/// The flag is deliberately global (the faithful port of the upstream
+/// `OfflineMode` singleton), but the tests of this crate's single test
+/// binary run in parallel: a test that flips the flag while another is
+/// inside `retry_on_io_errors` makes that sibling fail with `Net(Offline)`.
+/// That exact race took down the phase-5 macOS CI run in the sibling
+/// `mochy-innertube` crate (see `tests/offline_mode.rs` there). Every test
+/// that calls `set_offline` or executes `retry_on_io_errors` takes this
+/// lock for its whole body.
+#[cfg(test)]
+pub(crate) mod test_support {
+    pub static OFFLINE_FLAG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+}
+
 /// IP version preference (providers/innertube `IpVersion`; read through the
 /// `ipVersion` preference). `Auto` uses whatever the resolver returns;
 /// `Ipv4`/`Ipv6` filter the resolver's answers, falling back to the full

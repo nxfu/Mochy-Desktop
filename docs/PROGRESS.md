@@ -91,11 +91,13 @@ work this prompt assigned is done here; see HANDOFF ## Phase 05.)*
 - [ ] wry login window with cookie extraction; account menu (name/email/handle/photo) over the Phase 04 endpoint; sign-out forgets keys; HANDOFF entry
 
 ### Phase 08 — Stream resolution (mochy-innertube) — CP M1
-- [ ] Client walk from VISIONOS through logged-in prefix + fallbacks; skip loginRequired when signed out
-- [ ] Format ranking (quality ladder AUTO/LOW/MEDIUM/HIGH, codec rank, sample rate), ranged-GET validation (206)
-- [ ] EJS n-solver in rquickjs; PO tokens via rustypipe-botguard (session→player, per-video→URL); stale-splice eviction
-- [ ] NewPipeExtractor-needed parts re-implemented (STS, last-resort extraction) studying rustypipe
-- [ ] M1 checkpoint: signed-out search/browse/album/artist/playlist parity; stream URL validates; HANDOFF entry
+*(This phase's whole scope landed early: it was the Phase 06 prompt's
+task — see HANDOFF ## Phase 06 and the PORT_SPEC roadmap note.)*
+- [x] Client walk from VISIONOS through logged-in prefix + fallbacks; skip loginRequired when signed out (done in Phase 06 by its task prompt — `stream/walk.rs` + 15 fault-injection tests)
+- [x] Format ranking (quality ladder AUTO/LOW/MEDIUM/HIGH, codec rank, sample rate), ranged-GET validation (206) (done in Phase 06 — `stream/ranking.rs` pure function; `stream/validate.rs` last-byte probe + stale-splice + PlaybackCache)
+- [x] EJS n-solver in rquickjs; PO tokens (session→player, per-video→URL); stale-splice eviction (done in Phase 06 — vendored EJS bundle over `stream/jsengine.rs`; PO tokens minted in-process over the same engine, rustypipe-botguard studied but not depended on — it is a Deno CLI, not a library; see HANDOFF Phase 06 decision 2)
+- [x] NewPipeExtractor-needed parts re-implemented (STS, last-resort extraction) studying rustypipe (done in Phase 06 — `stream/newpipe.rs`; the age-restriction deviation is recorded)
+- [x] M1 checkpoint: signed-out search/browse/album/artist/playlist parity; stream URL validates; HANDOFF entry (parity: Phase 05 fixture corpus + wire tests; validation: Phase 06 fault-injection suite, all offline; the live end-to-end run stays behind `--features live` until an app shell can drive it)
 
 ## M2 — Audio engine
 

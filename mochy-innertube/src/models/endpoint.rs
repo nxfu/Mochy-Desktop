@@ -15,6 +15,10 @@ pub struct WatchEndpoint {
     pub watch_endpoint_music_supported_configs: Option<WatchEndpointMusicSupportedConfigs>,
 }
 
+/// `MUSIC_VIDEO_TYPE_ATV` (Endpoint.kt:33) — the studio upload
+/// itself, the type a song's own watch endpoint carries.
+pub const MUSIC_VIDEO_TYPE_ATV: &str = "MUSIC_VIDEO_TYPE_ATV";
+
 /// `Endpoint.kt:23-36`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

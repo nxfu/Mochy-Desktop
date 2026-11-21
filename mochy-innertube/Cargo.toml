@@ -41,6 +41,11 @@ base64 = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true }
 tokio = { workspace = true }
+# QuickJS-NG bindings — the in-process JS engine for the EJS n-solver,
+# the signature cipher and the BotGuard PO-token VM (Phase 06). This
+# replaces upstream's three Android WebViews; the engine owns one
+# dedicated OS thread (QuickJS contexts are single-threaded).
+rquickjs = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
@@ -49,8 +54,15 @@ tempfile = "3.27.0"
 [features]
 # OFFLINE BY DEFAULT. `live` enables the network-recording tests in
 # tests/live.rs (real music.youtube.com round trips that write redacted
-# fixtures into tests/fixtures/). NEVER enabled in CI: the CI matrix runs
-# `cargo test --workspace` without `--features live`, and the tests file is
-# compiled out entirely without the feature.
+# fixtures into tests/fixtures/) and the PO-token mint smoke test — NEVER
+# in CI: the CI matrix runs `cargo test --workspace` without
+# `--features live`, and both live test files are compiled out entirely
+# without the feature.
 default = []
 live = []
+# The InnerTubeX-equivalent alternate stream backend (upstream
+# utils/InnerTubeXStreams.kt + StreamBackend.INNERTUBEX). Off by default:
+# the engine itself is a future port (see stream/innertubex.rs); with the
+# feature off the resolution walk runs alone, exactly like upstream's
+# StreamBackend.CLASSIC.
+innertubex = []

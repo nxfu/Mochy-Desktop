@@ -1093,7 +1093,8 @@ fn player_visionos_parses_formats() {
         serde_json::from_value(fixture("player_visionos")).expect("decode player");
     assert_eq!(player.playability_status.as_ref().unwrap().status, "OK");
     let streaming = player.streaming_data.as_ref().unwrap();
-    assert_eq!(streaming.expires_in_seconds, 21540);
+    // `expiresInSeconds: Int?` — absent means the walk skips the client
+    assert_eq!(streaming.expires_in_seconds, Some(21540));
     let adaptive = &streaming.adaptive_formats[0];
     assert_eq!(adaptive.itag, 251);
     assert!(adaptive.url.is_some());

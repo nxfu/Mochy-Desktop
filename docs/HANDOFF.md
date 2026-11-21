@@ -1004,3 +1004,156 @@ bridge.**
    truth for shapes until then.
 4. The app shell (displaced Phase 04 items in PROGRESS) still awaits
    its prompt.
+
+## Phase 06 — 2026-11-21
+
+**Status:** done (all acceptance criteria met; artifacts emitted)
+
+**Task:** mochy-innertube stream resolution — the port of
+`utils/YTPlayerUtils.kt` (1,241 lines) + `utils/potoken/` (5 files) +
+the stream-facing halves of `utils/SongVersions.kt` and the
+NewPipeExtractor uses, plus the macOS CI fix that gated the phase.
+This is the ledger's **Phase 08 scope pulled forward by this prompt**
+(the ledger's own Phase 06 items had already landed with Phase 05);
+PROGRESS and the PORT_SPEC roadmap row carry the retitle notes.
+
+**Commits (13):** `phase-06(ci)` (offline-flag isolation) →
+`phase-06(innertube)` ×2 (jsengine + vendored EJS n-solver; format
+ranking) → `phase-06(innertube)` doc fix → `phase-06(innertube)`
+signature cipher → `phase-06(innertube)` ×5 (walk inputs; song
+versions; po token; newpipe uses; validation + cache) →
+`phase-06(innertube)` (the walk + playback + innertubex seam) →
+`phase-06(net)` (guard annotation) → `phase-06(tests)` (walk suite +
+mock harness) → `phase-06(docs)` — on branch `phase-06` **cut from
+`phase-05`** (see Decision 1).
+
+### Harvest summary
+
+- **The CI fix first:** `golden_headers_web_remix_signed_out` failed
+  with `Net(Offline)` because `offline_mode_refuses_before_any_request`
+  flips the process-global `OfflineMode` atomic while the binary's
+  other twelve tests run in parallel (the flag is checked before every
+  request). Every mochy-net test that touches the flag now takes
+  `OFFLINE_FLAG_LOCK` for its whole body; the five guards held across
+  awaits carry `#[allow(clippy::await_holding_lock)]` with the
+  rationale in `lib.rs::test_support`.
+- **`stream/jsengine.rs`**: one QuickJS-NG (rquickjs 0.14) context on
+  a dedicated OS thread behind a job channel — the port of the three
+  Android WebViews (CipherWebView, EjsNTransformSolver's SolverWebView,
+  PoTokenWebView) without the browser; console → tracing, cooperative
+  timers pumped by `Engine::wait_for`.
+- **`stream/ejs.rs`**: the EJS n-solver (jsc() preprocessing, the
+  vendored yt-dlp EJS bundle, Unlicense + meriyah/astring licenses
+  verified) with a recorded offline fixture.
+- **`stream/ranking.rs`**: `selectAudioFormatCandidates` as a pure
+  function — the LOW 70k / MEDIUM 135k ceilings, AUTO against the
+  metered state, the comparator chain (direct URL > AUDIO_QUALITY_*
+  label > channels > bitrate > Opus-over-AAC > sample rate),
+  original-over-auto-dubbed, below-target-then-nearest.
+- **`stream/cipher.rs`**: PlayerJsFetcher (iframe-API discovery,
+  disk cache), FunctionNameExtractor, the QuickJS signature runtime,
+  `deobfuscateStreamUrl` / `transformNParamInUrl`.
+- **`stream/potoken.rs`**: in-process BotGuard minting (see Decision
+  2) with the 5-minute failure cooldown and warm-engine retry.
+- **`stream/newpipe.rs`**: STS lookup + the watch-page
+  `ytInitialPlayerResponse` last resort (see Decision 5).
+- **`stream/validate.rs`**: the last-byte ranged-GET probe
+  (206/2xx served, 416-without-length served, 403/IO cut off),
+  `stale_splice` (itag/content-length), the `PlaybackCache` with the
+  403-invalidate / 416-clear rules Phase 09 replays.
+- **`stream/song_versions.rs`**: the studio swap + stand-in candidates
+  (≤ 2, closest length first, other-take filtering).
+- **`stream/walk.rs` + `stream/playback.rs`**: the walk
+  (`resolvePlaybackData`) and the entry orchestration
+  (`playerResponseForPlayback`: orStandIn, studioVersionOf, the guest
+  rotation retry, BotDetectionMitigator reporting).
+- **`stream/innertubex.rs`**: the alternate-backend seam behind the
+  `innertubex` feature (Decision 3).
+- **Tests: 15 walk fault-injection tests** (guest order + skip rules,
+  signed-in prefix, bot-check rotation + rest, rate-limit stop, dead
+  connection / cut-off url / missing expiry / ciphered-only fallbacks,
+  416-no-length, privately-owned unvalidated, 403 invalidation,
+  stand-in swap, studio swap, lazy boot) over a keep-alive scripted
+  mock. **mochy-innertube: 217 tests** (from 138); **workspace: 333**
+  (from 254). fmt clean, `clippy --workspace --all-targets
+  -D warnings` clean (also verified with `--features innertubex` and
+  `--features live`).
+
+### Decisions
+
+1. **Branch `phase-06` is cut from `phase-05`**, like Phase 05 from
+   Phase 04: the phases build directly on each other and none are
+   pushed. The patch series stacks — apply `patches/phase-04/*`, then
+   `phase-05/*`, then `phase-06/*`.
+2. **PO tokens run in-process over the port's own QuickJS engine, not
+   rustypipe-botguard.** rustypipe-botguard on crates.io is a
+   Deno-based CLI tool (JSDOM emulation, snapshot files), not an
+   in-process library — the task's suggestion resolved to "study it,
+   don't depend on it". The port implements the same Create/GenerateIT
+   flow with LuanRT's BgUtils client shapes over
+   `assets/potoken/botguard_client.js` (adapted from upstream's
+   `po_token.html`). A deno_core-based alternative (embedding a
+   stripped Deno the way rustypipe-botguard does) is documented in
+   `stream/potoken.rs` and deliberately unused — one JS runtime in the
+   process is enough.
+3. **The InnerTubeX engine is a seam, not a port.** Upstream's
+   `com.metrolist.innertubex` is a complete second streaming engine;
+   this phase ports the seam it plugs into — the backend selection
+   (`innerTubeXFirst`), the 12 s give-up budget, the quality-ladder
+   translation, `ExtractedStream` → `PlaybackData` — behind the
+   off-by-default `innertubex` feature. The trait's futures are boxed
+   (`Pin<Box<dyn Future>>`) so the seam can hold it as `dyn`; the
+   default `UnimplementedEngine` misses everything and the walk serves,
+   exactly upstream's `StreamBackend.CLASSIC`. The engine itself is
+   future work, not in any current phase's scope.
+4. **`StreamingData.expires_in_seconds` is `Option<i64>`** (upstream
+   `expiresInSeconds: Int?`): absent means the walk skips the client —
+   a link with no lifetime is a dead link, not a missing field.
+5. **The NewPipe age-restriction flag comes from the walk's own
+   playability statuses**, not from inspecting NewPipe error text the
+   way upstream's `getSignatureTimestamp(videoId)` does — the port
+   already reads those statuses; `SignatureTimestampResult::
+   is_age_restricted` is the seam for a watch-page refinement if one
+   is ever needed.
+6. **`StreamError::UploadRefused` boxes its `VideoDetails`** (192
+   bytes): inline, the error crossed the size where moving it stops
+   being free (`clippy::result_large_err`); the walk constructs it
+   once per failed resolution.
+7. **`musicVideoType()` falls through to the navigation endpoint**
+   (both renderers): upstream's `?:` chain, where a `?` in the port
+   made the fallback dead code — a Phase 06 walk test caught it
+   (upstream won, as required).
+8. **The URL probe asks for exactly one byte** (`bytes=offset-offset`)
+   over the client's googlevideo headers plus the session cookie when
+   signed in — HEAD answers 403 even for good urls, and an open-ended
+   range would pull the whole tail through the mock.
+9. **SABR stays out of scope** (PORT_SPEC decision Q7 / R1): the walk
+   takes the progressive-URL clients; the sabr/ utils are not ported.
+
+### Deviations
+
+- Decision 5 (the age-restriction source) is the only behavioral
+  divergence from upstream, and it is observably equivalent for every
+  status the walk reads. Everything else is a faithful port; the
+  mock-harness `watch`-over-`Notify` fix (tests/common/mod.rs) is test
+  infrastructure, not behavior.
+
+### Next steps
+
+1. **Phase 07 remainder** (the only unticked Phase 07 item): the wry
+   login window with cookie extraction, the account menu over the
+   Phase 04 `accountInfo` endpoint, sign-out forgetting the vault
+   keys.
+2. **Phase 09** (`mochy-audio`) consumes this phase directly:
+   `validate::stale_splice` + `PlaybackCache` are its eviction and
+   invalidation rules; the 403/416 handlers call
+   `PlaybackCache::invalidate` / `clear` exactly as the walk tests
+   pin.
+3. **M1 checkpoint**: signed-out browse/search parity is proven by
+   the Phase 05 fixture corpus + wire tests; stream URL validation by
+   this phase's fault-injection suite. A live end-to-end parity run
+   stays behind `--features live` (never in CI) until the first
+   app-shell phase can drive it.
+4. The InnerTubeX engine, if ever wanted, implements
+   `AlternateStreamEngine` behind the feature flag — no walk changes
+   needed.

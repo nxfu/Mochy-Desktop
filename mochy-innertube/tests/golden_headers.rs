@@ -438,25 +438,6 @@ async fn rate_limit_short_circuits_the_transport() {
     assert_eq!(requests.len(), 1, "429 must not be retried");
 }
 
-/// Offline mode: nothing goes out (InnerTube.kt:71-73 +
-/// utils/OfflineMode.kt).
-#[tokio::test]
-async fn offline_mode_refuses_before_any_request() {
-    let (addr, captured, server) = serve_responses(vec![]).await;
-    let session = session_with(None, None);
-    let transport = test_transport(session, addr);
-    let client = ClientRegistry::new().get(ClientKey::WebRemix);
-    mochy_net::set_offline(true);
-    let result = transport.search(&client, Some("q"), None, None).await;
-    mochy_net::set_offline(false);
-    assert!(result.unwrap_err().is_offline());
-    drop(server);
-    assert!(
-        captured.lock().unwrap().is_empty(),
-        "no request may go out offline"
-    );
-}
-
 /// The resumable playlist-image upload handshake: start captures
 /// `x-guploader-uploadid`, finalize carries it as a query param
 /// (InnerTube.kt:670-699).

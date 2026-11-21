@@ -270,6 +270,61 @@ impl InnerTubeTransport {
         .map_err(InnertubeError::from)
     }
 
+    /// A plain GET to an absolute URL with a custom user agent — the
+    /// raw fetches outside the innertube API the stream layer makes:
+    /// the iframe API and player script (utils/cipher/
+    /// PlayerJsFetcher.kt:162-193) and the watch page
+    /// (`NewPipeDownloaderImpl` over NewPipe's own requests). No
+    /// client headers, cached like every other GET, retried like
+    /// every other request; the app proxy and IP-version pinning of
+    /// the shared client apply automatically
+    /// (`followAppProxy`, PlayerJsFetcher.kt:21-23).
+    pub async fn raw_text_get(
+        &self,
+        url: &str,
+        user_agent: &str,
+    ) -> Result<String, InnertubeError> {
+        let mut request = ShapedRequest::endpoint(
+            reqwest::Method::GET,
+            "raw",
+            &crate::client::ClientRegistry::new().get(crate::client::ClientKey::Web),
+            false,
+            None,
+        );
+        request.url = url.to_owned();
+        request.use_client_headers = false;
+        request.cacheable = true;
+        request
+            .headers
+            .push(("User-Agent".to_owned(), user_agent.to_owned()));
+        self.send_text(request).await
+    }
+
+    /// One-shot status probe of a stream URL — the ranged GET of
+    /// `validateStatus` (YTPlayerUtils.kt:1064-1099). Unlike every
+    /// endpoint call this must NOT retry, NOT map non-2xx to errors
+    /// and NOT go through the response cache: a 403/416/206 answer is
+    /// data, not failure. Returns the HTTP status code (None when the
+    /// request itself failed — a connection error counts as "cut
+    /// off").
+    pub(crate) async fn probe_status(
+        &self,
+        url: &str,
+        headers: &[(String, String)],
+        offset: &str,
+    ) -> Option<u16> {
+        let client = self.ensure_client().ok()?;
+        let url = self.rewrite(url.to_owned());
+        let mut builder = client
+            .get(&url)
+            .header("Range", format!("bytes={offset}-{offset}"));
+        for (name, value) in headers {
+            builder = builder.header(name, value);
+        }
+        let response = builder.send().await.ok()?;
+        Some(response.status().as_u16())
+    }
+
     /// One attempt: GET -> disk cache check; POST -> straight out; the
     /// response status is checked `expectSuccess`-style (InnerTube.kt:77)
     /// with 429 mapped to the typed rate-limit error by [`NetError`].

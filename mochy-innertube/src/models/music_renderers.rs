@@ -141,15 +141,24 @@ impl MusicResponsiveListItemRenderer {
     /// `musicVideoType` (MusicResponsiveListItemRenderer.kt:36-44) — the
     /// overlay's play button first, then the navigation endpoint.
     pub fn music_video_type(&self) -> Option<String> {
+        // the overlay's play endpoint, else the item's own endpoint
+        // (upstream's `?:` chain — a `?` here would make the fallback
+        // dead code, which a Phase 06 walk test caught)
         self.overlay
-            .as_ref()?
-            .music_item_thumbnail_overlay_renderer
-            .content
-            .music_play_button_renderer
-            .play_navigation_endpoint
-            .as_ref()?
-            .music_video_type()
-            .map(str::to_owned)
+            .as_ref()
+            .and_then(|overlay| {
+                Some(
+                    overlay
+                        .music_item_thumbnail_overlay_renderer
+                        .content
+                        .music_play_button_renderer
+                        .play_navigation_endpoint
+                        .as_ref()?
+                        .music_video_type()
+                        .map(str::to_owned),
+                )
+            })
+            .flatten()
             .or_else(|| {
                 self.navigation_endpoint
                     .as_ref()
@@ -275,14 +284,20 @@ impl MusicTwoRowItemRenderer {
     /// `musicVideoType` (MusicTwoRowItemRenderer.kt:48-56).
     pub fn music_video_type(&self) -> Option<String> {
         self.thumbnail_overlay
-            .as_ref()?
-            .music_item_thumbnail_overlay_renderer
-            .content
-            .music_play_button_renderer
-            .play_navigation_endpoint
-            .as_ref()?
-            .music_video_type()
-            .map(str::to_owned)
+            .as_ref()
+            .and_then(|overlay| {
+                Some(
+                    overlay
+                        .music_item_thumbnail_overlay_renderer
+                        .content
+                        .music_play_button_renderer
+                        .play_navigation_endpoint
+                        .as_ref()?
+                        .music_video_type()
+                        .map(str::to_owned),
+                )
+            })
+            .flatten()
             .or_else(|| {
                 self.navigation_endpoint
                     .music_video_type()

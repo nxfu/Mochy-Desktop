@@ -44,6 +44,9 @@ mod tests {
 
     #[test]
     fn flag_round_trips_and_defaults_off() {
+        // holds the test-support lock: the flag is process-global, and a
+        // sibling test inside retry_on_io_errors must not observe it
+        let _guard = crate::test_support::OFFLINE_FLAG_LOCK.lock().unwrap();
         assert!(!is_on(), "offline defaults to off");
         set_offline(true);
         assert!(is_on());

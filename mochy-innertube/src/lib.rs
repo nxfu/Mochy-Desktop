@@ -61,6 +61,7 @@ pub mod models;
 pub mod pages;
 pub mod paging;
 pub mod session;
+pub mod stream;
 pub mod transport;
 pub mod utils;
 pub mod youtube;

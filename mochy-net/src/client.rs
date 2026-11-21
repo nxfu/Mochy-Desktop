@@ -201,11 +201,16 @@ mod tests {
         assert!(ClientFactory.build(&spec).is_ok());
     }
 
+    // the guard below is HELD ACROSS AWAITS on purpose: it serializes
+    // the whole test body against the tests that flip the global
+    // offline flag (see `test_support`)
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn rate_limit_short_circuits_the_retry_wrapper() {
         use crate::error::NetError;
         use crate::policy::{RetryPolicy, retry_on_io_errors};
 
+        let _guard = crate::test_support::OFFLINE_FLAG_LOCK.lock().unwrap();
         // a server that always answers 429
         let (server, addr) =
             serve_once("HTTP/1.1 429 Too Many Requests\r\nContent-Length: 0\r\n\r\n").await;
@@ -231,11 +236,15 @@ mod tests {
         assert_eq!(head.matches("GET /").count(), 1, "429 must not be retried");
     }
 
+    // see rate_limit_short_circuits_the_retry_wrapper: the guard is
+    // held across awaits on purpose
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn server_error_is_not_retried_but_surfaced() {
         use crate::error::NetError;
         use crate::policy::{RetryPolicy, retry_on_io_errors};
 
+        let _guard = crate::test_support::OFFLINE_FLAG_LOCK.lock().unwrap();
         // a server that always answers 500 (non-IO: no retry per upstream)
         let (server, addr) =
             serve_once("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n").await;
