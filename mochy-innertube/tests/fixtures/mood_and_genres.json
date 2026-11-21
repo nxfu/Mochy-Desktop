@@ -1,0 +1,41 @@
+{
+  "responseContext": { "visitorData": "<redacted:visitordata>" },
+  "contents": {
+    "singleColumnBrowseResultsRenderer": {
+      "tabs": [
+        {
+          "tabRenderer": {
+            "title": "Moods & genres",
+            "content": {
+              "sectionListRenderer": {
+                "contents": [
+                  {
+                    "gridRenderer": {
+                      "header": { "gridHeaderRenderer": { "title": { "runs": [ { "text": "Moods & genres" } ] } } },
+                      "items": [
+                        {
+                          "musicNavigationButtonRenderer": {
+                            "buttonText": { "runs": [ { "text": "Chill" } ] },
+                            "solid": { "leftStripeColor": 4294967295 },
+                            "clickCommand": { "browseEndpoint": { "browseId": "FEmusic_moods_and_genres", "params": "chill_params" } }
+                          }
+                        },
+                        {
+                          "musicNavigationButtonRenderer": {
+                            "buttonText": { "runs": [ { "text": "Workout" } ] },
+                            "solid": { "leftStripeColor": 4294901760 },
+                            "clickCommand": { "browseEndpoint": { "browseId": "FEmusic_moods_and_genres", "params": "workout_params" } }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

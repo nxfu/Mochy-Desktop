@@ -1,0 +1,87 @@
+{
+  "contents": {
+    "singleColumnMusicWatchNextResultsRenderer": {
+      "tabbedRenderer": {
+        "watchNextTabbedResultsRenderer": {
+          "tabs": [
+            {
+              "tabRenderer": {
+                "title": "Queue",
+                "content": {
+                  "musicQueueRenderer": {
+                    "content": {
+                      "playlistPanelRenderer": {
+                        "title": "Playlist One",
+                        "titleText": { "runs": [ { "text": "Playlist One" } ] },
+                        "shortBylineText": { "runs": [ { "text": "Owner O" } ] },
+                        "playlistId": "PL_playlist1",
+                        "contents": [
+                          {
+                            "playlistPanelVideoRenderer": {
+                              "title": { "runs": [ { "text": "Song Five" } ] },
+                              "lengthText": { "runs": [ { "text": "3:20" } ] },
+                              "longBylineText": { "runs": [
+                                { "text": "Owner O", "navigationEndpoint": { "browseEndpoint": { "browseId": "UCO1", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL" } } } } },
+                                { "text": " • " },
+                                { "text": "Album G", "navigationEndpoint": { "browseEndpoint": { "browseId": "MPREb_albumG", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_ALBUM" } } } } }
+                              ] },
+                              "badges": [ { "musicInlineBadgeRenderer": { "icon": { "iconType": "MUSIC_EXPLICIT_BADGE" } } } ],
+                              "videoId": "SONG5",
+                              "playlistSetVideoId": "SET_SONG5",
+                              "selected": true,
+                              "thumbnail": { "thumbnails": [ { "url": "https://i.ytimg.com/vi/SONG5/120.jpg", "width": 120, "height": 120 } ] },
+                              "menu": { "menuRenderer": { "items": [
+                                { "toggleMenuServiceItemRenderer": { "defaultIcon": { "iconType": "LIBRARY_SAVED" }, "defaultServiceEndpoint": { "feedbackEndpoint": { "feedbackToken": "REMOVE_SONG5" } }, "toggledServiceEndpoint": { "feedbackEndpoint": { "feedbackToken": "ADD_SONG5" } } } }
+                              ] } },
+                              "navigationEndpoint": { "watchEndpoint": { "videoId": "SONG5", "playlistId": "PL_playlist1" } }
+                            }
+                          },
+                          {
+                            "playlistPanelVideoRenderer": {
+                              "title": { "runs": [ { "text": "Song Six" } ] },
+                              "lengthText": { "runs": [ { "text": "2:30" } ] },
+                              "longBylineText": { "runs": [
+                                { "text": "Owner O", "navigationEndpoint": { "browseEndpoint": { "browseId": "UCO1", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL" } } } } },
+                                { "text": " • " },
+                                { "text": "Album G", "navigationEndpoint": { "browseEndpoint": { "browseId": "MPREb_albumG", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_ALBUM" } } } } }
+                              ] },
+                              "videoId": "SONG6",
+                              "playlistSetVideoId": "SET_SONG6",
+                              "selected": false,
+                              "thumbnail": { "thumbnails": [ { "url": "https://i.ytimg.com/vi/SONG6/120.jpg", "width": 120, "height": 120 } ] },
+                              "navigationEndpoint": { "watchEndpoint": { "videoId": "SONG6", "playlistId": "PL_playlist1" } }
+                            }
+                          }
+                        ],
+                        "continuations": [ { "nextContinuationData": { "continuation": "NEXT_QUEUE_CONT" } } ]
+                      }
+                    },
+                    "header": {
+                      "musicQueueHeaderRenderer": {
+                        "title": { "runs": [ { "text": "Queue" } ] },
+                        "subtitle": { "runs": [ { "text": "Playlist One" } ] }
+                      }
+                    }
+                  }
+                },
+                "endpoint": { "browseEndpoint": { "browseId": "FEqueue" } }
+              }
+            },
+            {
+              "tabRenderer": {
+                "title": "Lyrics",
+                "endpoint": { "browseEndpoint": { "browseId": "MPLYt_SONG5_LYRICS", "params": "lyrics_params" } }
+              }
+            },
+            {
+              "tabRenderer": {
+                "title": "Related",
+                "endpoint": { "browseEndpoint": { "browseId": "MPLYt_SONG5_RELATED" } }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

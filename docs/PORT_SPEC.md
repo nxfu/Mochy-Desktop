@@ -305,6 +305,14 @@ serializer), `paste` 1.0.15 (identifier concatenation inside the macro),
 Musixmatch path; aws-lc-rs shares reqwest rustls' crypto provider so no
 second TLS stack is pulled).
 
+Phase 04 additions (verified on crates.io 2026-11-21, recorded in
+HANDOFF ## Phase 04): `sha1` 0.11.0 (the SAPISIDHASH login header —
+YouTube's legacy scheme, not security-critical), `base64` 0.23.1 (the
+get_transcript params envelope), and the `query` feature on the existing
+reqwest 0.13.5 pin (0.13 moved `RequestBuilder::query` behind
+serde_urlencoded; the innertube transport shapes query params like
+upstream's ktor `parameter()` calls).
+
 Licensing constraints that ride along: yt-dlp EJS bundle = Unlicense (safe to
 vendor); **meriyah/astring licenses need verification before vendoring**;
 symphonia = MPL-2.0 (used unmodified — no file-level disclosure triggered);
@@ -325,7 +333,7 @@ own prompts — PROGRESS.md is updated when they are.
 | 01 | M0 | Bootstrap workspace, docs, license, CI | — |
 | 02 | M0 | `mochy-config` settings registry (398 static keys + dynamic factory, defaults, search index, atomic persistence, watchers) + `mochy-vault` (12 keys over keyring) | settings round-trip |
 | 03 | M0 | `mochy-db`: schema v45 mirror (24 tables, 3 views), repositories + invalidation watcher, Android `mochy.db` importer (v35–45) | imported Android DB opens |
-| 04 | M0 | `mochy` shell skeleton: GPUI window, sidebar + routing, theme tokens, AppContext/services builder → **CP M0** | CI green 3 OS; window with sidebar + routing + tokens |
+| 04 | M0→M1 | **Retitled by its prompt:** mochy-innertube core (client registry, transport, auth, endpoints, paging) — the innertube bottom two tiers pulled forward from Phases 05–07; the `mochy` app-shell skeleton + CP M0 are displaced and await their own prompt (HANDOFF ## Phase 04 decision 1) | innertube core green offline |
 | 05 | M1 | `mochy-net` (reqwest factory, proxy/DoH/IP-version, response cache, offline flag) + innertube transport (`InnerTube.kt` port) | — |
 | 06 | M1 | `mochy-innertube` models + `pages/` parsers (21 + 2 glue), search/browse/album/artist/playlist | — |
 | 07 | M1 | 18-client registry, auth (SAPISIDHASH, cookie, visitor data), wry login window, account menu | — |

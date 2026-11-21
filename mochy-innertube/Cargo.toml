@@ -2,6 +2,11 @@
 #
 # Responsibility and upstream absorption: docs/PORT_SPEC.md "Workspace layout".
 # Upstream source (Android, pin bde01cb4): providers/innertube (106 files: InnerTube.kt transport, YouTube.kt 1,814-line facade, models/, pages/ 21 parsers + 2 glue) + app utils/YTPlayerUtils.kt (1,241 lines) + potoken/ + cipher/ + sabr/
+#
+# Phase 04 scope: client registry, raw transport, auth, guest sessions,
+# endpoint layer, continuation paging. Phase 05 adds the DTO layer
+# (models/), the 20 pages/ parsers + 2 glue files, the YouTube.kt facade
+# (1,814 lines) and the contract fixture corpus (see docs/PROGRESS.md).
 [package]
 name = "mochy-innertube"
 description = "18-client registry, endpoints, pagination, auth headers, PO tokens, EJS n-solver, stream-format ranking."
@@ -16,3 +21,36 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[dependencies]
+# Shared HTTP layer: reqwest factory, retry policy, 429 short-circuit,
+# offline gate, IpVersion pinning, proxy config, 50 MB GET disk cache.
+mochy-net = { path = "../mochy-net" }
+# Settings mirror: the session facade pushes registry changes into the
+# session at runtime (upstream App.kt observeSettingsChanges).
+mochy-config = { path = "../mochy-config" }
+# Cookie/visitorData/dataSyncId live in the OS keychain on desktop
+# (Phase 02 decision: the 12 secret keys moved out of settings.json).
+mochy-vault = { path = "../mochy-vault" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+sha1 = { workspace = true }
+base64 = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = "3.27.0"
+
+[features]
+# OFFLINE BY DEFAULT. `live` enables the network-recording tests in
+# tests/live.rs (real music.youtube.com round trips that write redacted
+# fixtures into tests/fixtures/). NEVER enabled in CI: the CI matrix runs
+# `cargo test --workspace` without `--features live`, and the tests file is
+# compiled out entirely without the feature.
+default = []
+live = []

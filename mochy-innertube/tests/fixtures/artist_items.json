@@ -1,0 +1,222 @@
+{
+  "responseContext": {
+    "visitorData": "<redacted:visitordata>"
+  },
+  "header": {
+    "musicHeaderRenderer": {
+      "title": {
+        "runs": [
+          {
+            "text": "Albums"
+          }
+        ]
+      }
+    }
+  },
+  "contents": {
+    "singleColumnBrowseResultsRenderer": {
+      "tabs": [
+        {
+          "tabRenderer": {
+            "title": "Albums",
+            "content": {
+              "sectionListRenderer": {
+                "contents": [
+                  {
+                    "gridRenderer": {
+                      "header": {
+                        "gridHeaderRenderer": {
+                          "title": {
+                            "runs": [
+                              {
+                                "text": "Albums"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "items": [
+                        {
+                          "musicTwoRowItemRenderer": {
+                            "title": {
+                              "runs": [
+                                {
+                                  "text": "Album B"
+                                }
+                              ]
+                            },
+                            "subtitle": {
+                              "runs": [
+                                {
+                                  "text": "Album"
+                                },
+                                {
+                                  "text": " \u2022 "
+                                },
+                                {
+                                  "text": "Artist B",
+                                  "navigationEndpoint": {
+                                    "browseEndpoint": {
+                                      "browseId": "UCB2",
+                                      "browseEndpointContextSupportedConfigs": {
+                                        "browseEndpointContextMusicConfig": {
+                                          "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "text": " \u2022 "
+                                },
+                                {
+                                  "text": "2022"
+                                }
+                              ]
+                            },
+                            "thumbnailRenderer": {
+                              "musicThumbnailRenderer": {
+                                "thumbnail": {
+                                  "thumbnails": [
+                                    {
+                                      "url": "https://i.ytimg.com/vi/ALBB/120.jpg",
+                                      "width": 120,
+                                      "height": 120
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "thumbnailOverlay": {
+                              "musicItemThumbnailOverlayRenderer": {
+                                "content": {
+                                  "musicPlayButtonRenderer": {
+                                    "playNavigationEndpoint": {
+                                      "watchPlaylistEndpoint": {
+                                        "playlistId": "OLAK5uy_albumB"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "navigationEndpoint": {
+                              "browseEndpoint": {
+                                "browseId": "MPREb_albumB",
+                                "browseEndpointContextSupportedConfigs": {
+                                  "browseEndpointContextMusicConfig": {
+                                    "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "continuations": [
+                        {
+                          "nextContinuationData": {
+                            "continuation": "ARTIST_ITEMS_CONT"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "continuationContents": {
+    "gridContinuation": {
+      "items": [
+        {
+          "musicTwoRowItemRenderer": {
+            "title": {
+              "runs": [
+                {
+                  "text": "Album F"
+                }
+              ]
+            },
+            "subtitle": {
+              "runs": [
+                {
+                  "text": "Album"
+                },
+                {
+                  "text": " \u2022 "
+                },
+                {
+                  "text": "Artist B",
+                  "navigationEndpoint": {
+                    "browseEndpoint": {
+                      "browseId": "UCB2",
+                      "browseEndpointContextSupportedConfigs": {
+                        "browseEndpointContextMusicConfig": {
+                          "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "text": " \u2022 "
+                },
+                {
+                  "text": "2024"
+                }
+              ]
+            },
+            "thumbnailRenderer": {
+              "musicThumbnailRenderer": {
+                "thumbnail": {
+                  "thumbnails": [
+                    {
+                      "url": "https://i.ytimg.com/vi/ALBF/120.jpg",
+                      "width": 120,
+                      "height": 120
+                    }
+                  ]
+                }
+              }
+            },
+            "thumbnailOverlay": {
+              "musicItemThumbnailOverlayRenderer": {
+                "content": {
+                  "musicPlayButtonRenderer": {
+                    "playNavigationEndpoint": {
+                      "watchPlaylistEndpoint": {
+                        "playlistId": "OLAK5uy_albumF"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "navigationEndpoint": {
+              "browseEndpoint": {
+                "browseId": "MPREb_albumF",
+                "browseEndpointContextSupportedConfigs": {
+                  "browseEndpointContextMusicConfig": {
+                    "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "continuations": [
+        {
+          "nextRadioContinuationData": {
+            "continuation": "ARTIST_ITEMS_CONT_2"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,397 @@
+{
+  "responseContext": {
+    "visitorData": "<redacted:visitordata>"
+  },
+  "contents": {
+    "twoColumnBrowseResultsRenderer": {
+      "tabs": [
+        {
+          "tabRenderer": {
+            "title": "Playlist",
+            "content": {
+              "sectionListRenderer": {
+                "contents": [
+                  {
+                    "musicResponsiveHeaderRenderer": {
+                      "thumbnail": {
+                        "musicThumbnailRenderer": {
+                          "thumbnail": {
+                            "thumbnails": [
+                              {
+                                "url": "https://i.ytimg.com/vi/PL1/544.jpg",
+                                "width": 544,
+                                "height": 544
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "buttons": [
+                        {
+                          "musicPlayButtonRenderer": {
+                            "playNavigationEndpoint": {
+                              "watchEndpoint": {
+                                "videoId": "SONG5",
+                                "playlistId": "PL_playlist1"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "menuRenderer": {
+                            "items": [
+                              {
+                                "menuNavigationItemRenderer": {
+                                  "text": {
+                                    "runs": [
+                                      {
+                                        "text": "Music_Shuffle"
+                                      }
+                                    ]
+                                  },
+                                  "icon": {
+                                    "iconType": "MUSIC_SHUFFLE"
+                                  },
+                                  "navigationEndpoint": {
+                                    "watchPlaylistEndpoint": {
+                                      "playlistId": "PL_playlist1"
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "musicPlayButtonRenderer": {
+                            "playNavigationEndpoint": {
+                              "watchEndpoint": {
+                                "videoId": "SONG5",
+                                "playlistId": "PL_playlist1"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "menuRenderer": {
+                            "items": [
+                              {
+                                "menuNavigationItemRenderer": {
+                                  "text": {
+                                    "runs": [
+                                      {
+                                        "text": "Mix"
+                                      }
+                                    ]
+                                  },
+                                  "icon": {
+                                    "iconType": "MIX"
+                                  },
+                                  "navigationEndpoint": {
+                                    "watchPlaylistEndpoint": {
+                                      "playlistId": "RD_playlist1"
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "title": {
+                        "runs": [
+                          {
+                            "text": "Playlist One"
+                          }
+                        ]
+                      },
+                      "subtitle": {
+                        "runs": [
+                          {
+                            "text": "Playlist"
+                          },
+                          {
+                            "text": " \u2022 "
+                          },
+                          {
+                            "text": "Owner O"
+                          }
+                        ]
+                      },
+                      "secondSubtitle": {
+                        "runs": [
+                          {
+                            "text": "50 songs"
+                          }
+                        ]
+                      },
+                      "straplineTextOne": {
+                        "runs": [
+                          {
+                            "text": "Owner O",
+                            "navigationEndpoint": {
+                              "browseEndpoint": {
+                                "browseId": "UCO1",
+                                "browseEndpointContextSupportedConfigs": {
+                                  "browseEndpointContextMusicConfig": {
+                                    "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "secondaryContents": {
+        "sectionListRenderer": {
+          "contents": [
+            {
+              "musicPlaylistShelfRenderer": {
+                "playlistId": "PL_playlist1",
+                "contents": [
+                  {
+                    "musicResponsiveListItemRenderer": {
+                      "flexColumns": [
+                        {
+                          "musicResponsiveListItemFlexColumnRenderer": {
+                            "text": {
+                              "runs": [
+                                {
+                                  "text": "Song Five"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "musicResponsiveListItemFlexColumnRenderer": {
+                            "text": {
+                              "runs": [
+                                {
+                                  "text": "Owner O",
+                                  "navigationEndpoint": {
+                                    "browseEndpoint": {
+                                      "browseId": "UCO1",
+                                      "browseEndpointContextSupportedConfigs": {
+                                        "browseEndpointContextMusicConfig": {
+                                          "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "text": " \u2022 "
+                                },
+                                {
+                                  "text": "3:20"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "musicResponsiveListItemFlexColumnRenderer": {
+                            "text": {
+                              "runs": [
+                                {
+                                  "text": "Album G",
+                                  "navigationEndpoint": {
+                                    "browseEndpoint": {
+                                      "browseId": "MPREb_albumG",
+                                      "browseEndpointContextSupportedConfigs": {
+                                        "browseEndpointContextMusicConfig": {
+                                          "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "fixedColumns": [
+                        {
+                          "musicResponsiveListItemFixedColumnRenderer": {
+                            "text": {
+                              "runs": [
+                                {
+                                  "text": "3:20"
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "thumbnail": {
+                        "musicThumbnailRenderer": {
+                          "thumbnail": {
+                            "thumbnails": [
+                              {
+                                "url": "https://i.ytimg.com/vi/SONG5/120.jpg",
+                                "width": 120,
+                                "height": 120
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "playlistItemData": {
+                        "playlistSetVideoId": "SET_SONG5",
+                        "videoId": "SONG5"
+                      },
+                      "overlay": {
+                        "musicItemThumbnailOverlayRenderer": {
+                          "content": {
+                            "musicPlayButtonRenderer": {
+                              "playNavigationEndpoint": {
+                                "watchEndpoint": {
+                                  "videoId": "SONG5"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "navigationEndpoint": {
+                        "watchEndpoint": {
+                          "videoId": "SONG5"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "continuationItemRenderer": {
+                      "continuationEndpoint": {
+                        "continuationCommand": {
+                          "token": "PLAYLIST_SONGS_CONT"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "continuations": [
+                  {
+                    "nextContinuationData": {
+                      "continuation": "PLAYLIST_SHELF_CONT"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "musicCarouselShelfRenderer": {
+                "header": {
+                  "musicCarouselShelfBasicHeaderRenderer": {
+                    "title": {
+                      "runs": [
+                        {
+                          "text": "Related"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "contents": [
+                  {
+                    "musicTwoRowItemRenderer": {
+                      "title": {
+                        "runs": [
+                          {
+                            "text": "Album H"
+                          }
+                        ]
+                      },
+                      "subtitle": {
+                        "runs": [
+                          {
+                            "text": "Album"
+                          },
+                          {
+                            "text": " \u2022 "
+                          },
+                          {
+                            "text": "Artist H",
+                            "navigationEndpoint": {
+                              "browseEndpoint": {
+                                "browseId": "UCH8",
+                                "browseEndpointContextSupportedConfigs": {
+                                  "browseEndpointContextMusicConfig": {
+                                    "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "text": " \u2022 "
+                          },
+                          {
+                            "text": "2020"
+                          }
+                        ]
+                      },
+                      "thumbnailRenderer": {
+                        "musicThumbnailRenderer": {
+                          "thumbnail": {
+                            "thumbnails": [
+                              {
+                                "url": "https://i.ytimg.com/vi/ALBH/120.jpg",
+                                "width": 120,
+                                "height": 120
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "thumbnailOverlay": {
+                        "musicItemThumbnailOverlayRenderer": {
+                          "content": {
+                            "musicPlayButtonRenderer": {
+                              "playNavigationEndpoint": {
+                                "watchPlaylistEndpoint": {
+                                  "playlistId": "OLAK5uy_albumH"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "navigationEndpoint": {
+                        "browseEndpoint": {
+                          "browseId": "MPREb_albumH",
+                          "browseEndpointContextSupportedConfigs": {
+                            "browseEndpointContextMusicConfig": {
+                              "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "continuations": [
+            {
+              "nextContinuationData": {
+                "continuation": "PLAYLIST_SECTION_CONT"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

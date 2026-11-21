@@ -1,0 +1,56 @@
+{
+  "responseContext": { "visitorData": "<redacted:visitordata>" },
+  "header": { "musicHeaderRenderer": { "title": { "runs": [ { "text": "Chill" } ] } } },
+  "contents": {
+    "singleColumnBrowseResultsRenderer": {
+      "tabs": [
+        {
+          "tabRenderer": {
+            "title": "Chill",
+            "content": {
+              "sectionListRenderer": {
+                "contents": [
+                  {
+                    "gridRenderer": {
+                      "header": { "gridHeaderRenderer": { "title": { "runs": [ { "text": "Playlists for Chill" } ] } } },
+                      "items": [
+                        {
+                          "musicTwoRowItemRenderer": {
+                            "title": { "runs": [ { "text": "Chill Mix" } ] },
+                            "subtitle": { "runs": [ { "text": "Playlist" }, { "text": " • " }, { "text": "Owner O" }, { "text": " • " }, { "text": "80 songs" } ] },
+                            "thumbnailRenderer": { "musicThumbnailRenderer": { "thumbnail": { "thumbnails": [ { "url": "https://i.ytimg.com/vi/CHILL/120.jpg", "width": 120, "height": 120 } ] } } },
+                            "thumbnailOverlay": { "musicItemThumbnailOverlayRenderer": { "content": { "musicPlayButtonRenderer": { "playNavigationEndpoint": { "watchPlaylistEndpoint": { "playlistId": "PL_chill" } } } } } },
+                            "navigationEndpoint": { "browseEndpoint": { "browseId": "VLPL_chill", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_PLAYLIST" } } } }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "musicCarouselShelfRenderer": {
+                      "header": { "musicCarouselShelfBasicHeaderRenderer": { "title": { "runs": [ { "text": "Chill songs" } ] } } },
+                      "contents": [
+                        {
+                          "musicTwoRowItemRenderer": {
+                            "title": { "runs": [ { "text": "Chill Song" } ] },
+                            "subtitle": { "runs": [
+                              { "text": "Artist A", "navigationEndpoint": { "browseEndpoint": { "browseId": "UCA1", "browseEndpointContextSupportedConfigs": { "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_ARTIST" } } } } },
+                              { "text": " • " },
+                              { "text": "5:00" }
+                            ] },
+                            "thumbnailRenderer": { "musicThumbnailRenderer": { "thumbnail": { "thumbnails": [ { "url": "https://i.ytimg.com/vi/CHILLS/120.jpg", "width": 120, "height": 120 } ] } } },
+                            "navigationEndpoint": { "watchEndpoint": { "videoId": "CHILLS" } }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

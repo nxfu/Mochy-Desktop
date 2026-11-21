@@ -37,7 +37,7 @@ mod offline;
 mod policy;
 mod proxy;
 
-pub use cache::{ByteRange, DiskCache, DiskCacheError, ResponseCache};
+pub use cache::{ByteRange, DiskCache, DiskCacheError, INNERTUBE_DISK_CACHE_BYTES, ResponseCache};
 pub use client::{ClientFactory, ClientSpec, DEFAULT_USER_AGENT};
 pub use doh::{CLOUDFLARE_DOH_URL, DohResolver};
 pub use error::NetError;

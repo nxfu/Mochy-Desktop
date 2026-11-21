@@ -1,0 +1,55 @@
+{
+  "responseContext": { "visitorData": "<redacted:visitordata>" },
+  "playabilityStatus": { "status": "OK" },
+  "playerConfig": { "audioConfig": { "loudnessDb": -4.2, "perceptualLoudnessDb": -4.2 } },
+  "streamingData": {
+    "adaptiveFormats": [
+      {
+        "itag": 250,
+        "mimeType": "audio/webm; codecs=\"opus\"",
+        "bitrate": 70000,
+        "quality": "tiny",
+        "approxDurationMs": "225000",
+        "audioSampleRate": 48000,
+        "audioChannels": 2,
+        "audioQuality": "AUDIO_QUALITY_LOW",
+        "signatureCipher": "s=%3D%3DASDASD&sp=sig&url=https%3A%2F%2Frr1---sn-1.webremix.example.com%2Fvideoplayback%3Fid%3DSONG1%26itag%3D250"
+      },
+      {
+        "itag": 251,
+        "mimeType": "audio/webm; codecs=\"opus\"",
+        "bitrate": 140000,
+        "quality": "tiny",
+        "approxDurationMs": "225000",
+        "audioSampleRate": 48000,
+        "audioChannels": 2,
+        "audioQuality": "AUDIO_QUALITY_MEDIUM",
+        "cipher": "s=%3DASD&sp=nv&url=https%3A%2F%2Frr1---sn-1.webremix.example.com%2Fvideoplayback%3Fid%3DSONG1%26itag%3D251"
+      }
+    ],
+    "expiresInSeconds": 21540
+  },
+  "videoDetails": {
+    "videoId": "SONG1",
+    "title": "Song One",
+    "author": "Song One - Topic",
+    "channelId": "UC_topic_song1",
+    "lengthSeconds": "225",
+    "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
+    "viewCount": "123456",
+    "thumbnail": { "thumbnails": [ { "url": "https://i.ytimg.com/vi/SONG1/544.jpg", "width": 544, "height": 544 } ] }
+  },
+  "playbackTracking": {
+    "videostatsPlaybackUrl": { "baseUrl": "https://s.youtube.com/api/stats/playback?cpn=abc&docid=SONG1" },
+    "videostatsWatchtimeUrl": { "baseUrl": "https://s.youtube.com/api/stats/watchtime?cpn=abc&docid=SONG1&len=225" },
+    "atrUrl": { "baseUrl": "https://s.youtube.com/api/stats/atr?cpn=abc" }
+  },
+  "captions": {
+    "playerCaptionsTracklistRenderer": {
+      "captionTracks": [
+        { "baseUrl": "https://www.youtube.com/api/timedtext?v=SONG1&lang=en&kind=asr&fmt=json3", "languageCode": "en-US", "kind": "asr" },
+        { "baseUrl": "https://www.youtube.com/api/timedtext?v=SONG1&lang=en&fmt=json3", "languageCode": "en" }
+      ]
+    }
+  }
+}

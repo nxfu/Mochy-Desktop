@@ -109,7 +109,9 @@ tokio = { version = "1.54.1", features = [
 # --- HTTP / networking ---------------------------------------------------------
 # Blueprint ch. 13: rustls (never native-tls), socks+cookies+brotli; reqwest
 # 0.13 makes HTTP/2 and system-proxy default-capable. Feature names verified
-# against crates.io (0.13 renamed rustls-tls -> rustls).
+# against crates.io (0.13 renamed rustls-tls -> rustls; "query" — added
+# Phase 04 — gates RequestBuilder::query behind serde_urlencoded, which the
+# innertube transport needs for prettyPrint/continuation/cpn shaping).
 reqwest = { version = "0.13.5", default-features = false, features = [
     "rustls",
     "socks",
@@ -118,6 +120,7 @@ reqwest = { version = "0.13.5", default-features = false, features = [
     "gzip",
     "http2",
     "json",
+    "query",
     "stream",
     "system-proxy",
 ] }
@@ -229,6 +232,25 @@ palette = "0.7.7"
 # --- Caches -----------------------------------------------------------------------------------
 moka = { version = "0.12.16", features = ["sync", "future"] } # TinyLFU
 lru = "0.19.0"
+
+# --- Cryptography / encoding -----------------------------------------------------
+# SHA-1 for the SAPISIDHASH login header (providers/innertube
+# InnerTube.kt:172-176 — YouTube's origin-bound `time_SAPISIDHASH` scheme).
+# Not for anything security-sensitive; it is YouTube's legacy protocol.
+# Verified on crates.io 2026-11-21: 0.11.0 current (Phase 04 addition).
+sha1 = "0.11.0"
+# Standard base64 for the get_transcript params envelope
+# (InnerTube.kt:418-420: Base64 of "\n\x0b$videoId") and future
+# continuation/visitorData plumbing. Verified on crates.io 2026-11-21:
+# 0.23.1 current (Phase 04 addition).
+base64 = "0.23.1"
+# The innertube DTO-layer patterns ported verbatim from Kotlin regexes:
+# duration strings with dot-or-colon separators (Utils.kt:91
+# `^(?:(\p{Nd}+)[:.])?(\p{Nd}+)[:.](\p{Nd}{2})$`), the timestamp guard
+# (Runs.kt:45) and the AI-generated heuristics (YTItem.kt:120/135).
+# `regex`'s `\d` is Unicode `Nd` exactly like Kotlin's `\p{Nd}`.
+# Verified on crates.io 2026-11-21: 1.13.2 current (Phase 05 addition).
+regex = "1.13.2"
 
 # --- Errors and logging ---------------------------------------------------------------------------
 thiserror = "2.0.21"

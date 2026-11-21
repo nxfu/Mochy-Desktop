@@ -1,0 +1,44 @@
+{
+  "actions": [
+    {
+      "updateEngagementPanelAction": {
+        "content": {
+          "transcriptRenderer": {
+            "body": {
+              "transcriptBodyRenderer": {
+                "cueGroups": [
+                  {
+                    "transcriptCueGroupRenderer": {
+                      "cues": [
+                        {
+                          "transcriptCueRenderer": {
+                            "cue": { "simpleText": " [Music] first line " },
+                            "startOffsetMs": 2000,
+                            "durationMs": 3000
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "transcriptCueGroupRenderer": {
+                      "cues": [
+                        {
+                          "transcriptCueRenderer": {
+                            "cue": { "simpleText": "second ♪ line" },
+                            "startOffsetMs": 5000,
+                            "durationMs": 2500
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

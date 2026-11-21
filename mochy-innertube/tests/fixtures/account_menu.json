@@ -1,0 +1,20 @@
+{
+  "actions": [
+    {
+      "openPopupAction": {
+        "popup": {
+          "multiPageMenuRenderer": {
+            "header": {
+              "activeAccountHeaderRenderer": {
+                "accountName": { "runs": [ { "text": "Mochy Listener" } ] },
+                "email": { "runs": [ { "text": "listener@example.com" } ] },
+                "channelHandle": { "runs": [ { "text": "@mochylistener" } ] },
+                "accountPhoto": { "thumbnails": [ { "url": "//yt3.ggpht.com/s48/photo.jpg", "width": 48, "height": 48 }, { "url": "//yt3.ggpht.com/s176/photo.jpg", "width": 176, "height": 176 } ] }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

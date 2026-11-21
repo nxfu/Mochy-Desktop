@@ -1,0 +1,9 @@
+{
+  "id": "SONG1",
+  "dateCreated": "2026-11-01T00:00:00Z",
+  "likes": 100,
+  "dislikes": 5,
+  "rating": 4.8,
+  "viewCount": 123456,
+  "deleted": false
+}

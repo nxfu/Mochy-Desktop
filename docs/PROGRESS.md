@@ -41,29 +41,54 @@ M6 Modules + import (21–22) · M7 Integrations (23) · M8 Polish + ship (24–
 - [x] Media3 `exoplayer_internal.db` download-index read path
 - [x] Migration tests on fixture `.db` files; HANDOFF entry
 
-### Phase 04 — App shell skeleton (mochy) — CP M0
+### Phase 04 — mochy-innertube core: client matrix, transport, auth, endpoints, paging (M1, part 1)
+
+*(Retitled per this phase's prompt — the innertube bottom two tiers moved
+forward from Phases 05–07. The original app-shell scope is displaced and
+awaits its own prompt; its items are kept below, unchecked, so nothing is
+lost. See HANDOFF ## Phase 04 decision 1.)*
+- [x] 18-client registry verbatim from `YouTubeClient.kt` (ids/versions/UAs/flags/origins) + YTPlayerUtils roles + runtime version overrides (R1 hotfix seam)
+- [x] Raw transport (InnerTube.kt port): per-request header injection, gzip, HTTP/2, IPv4/IPv6 pinning, proxy w/ auth via mochy-net, 50 MB GET disk cache, 3-attempt IO-only backoff, 429 short-circuit
+- [x] Auth: cookie + origin-bound SAPISIDHASH; `Arc<RwLock<Session>>` + the settings mirror (App.kt initializeSettings + observeSettingsChanges) over mochy-vault secrets
+- [x] Guest sessions: sw.js_data scrape (root[0][2], `^Cg[t|s]`), rotation on bot-check failures (BotDetectionMitigator semantics)
+- [x] All 22 endpoints (incl. RYD Votes, videostats reporting, BotGuard Create/GenerateIT as dedicated clients; resumable playlist_image_upload handshake; the 7 edit_playlist actions)
+- [x] Continuation paging helper: opaque tokens, seen-set dedup, 50-request caller-side ceiling
+- [x] Fixture harness: record/replay redacted fixtures, offline by default, `live` feature never in CI
+- [x] Acceptance: golden headers (WEB_REMIX signed-out/signed-in, VISIONOS guest), SAPISIDHASH vector, paging property tests, `cargo test -p mochy-innertube` green offline; HANDOFF entry
+
+*Displaced app-shell items (original Phase 04 / CP M0 — not done this
+phase, awaiting a phase prompt):*
 - [ ] GPUI window set plan (main window first), services builder, typed AppContext as GPUI Global
 - [ ] Sidebar navigation, Route enum + per-tab stacks (back = pop within tab; re-tap = pop to root + scroll top)
 - [ ] Theme tokens (dark-only, chrome 0x131313, hairline + grain, Inter seven weights, -0.05em semibold)
 - [ ] `mood_and_genres` route registered properly (PORT_SPEC §4.1)
-- [ ] M0 checkpoint: CI green 3 OS; imported DB opens; window with sidebar + routing + tokens; HANDOFF entry
+- [ ] M0 checkpoint: CI green 3 OS; imported DB opens; window with sidebar + routing + tokens
 
 ## M1 — Innertube core
 
-### Phase 05 — Networking + transport (mochy-innertube transport)
+### Phase 05 — mochy-innertube parsers + YouTube facade + contract fixtures (M1, part 2)
+
+*(Retitled per this phase's prompt — the ledger's original Phase 05
+(transport) had already landed early: mochy-net in Phase 02, the
+InnerTube transport + guest sessions in Phase 04. The parser/facade
+work this prompt assigned is done here; see HANDOFF ## Phase 05.)*
 - [x] mochy-net: reqwest factory (rustls), proxy SOCKS/HTTP + auth, IPv4/IPv6 pinning, DoH, 50 MB disk response cache, offline flag (pulled forward into Phase 02 by its task prompt; data-saver gate remains — it reads the connectivity observer, Phase 05)
-- [ ] InnerTube transport port: per-request header injection, gzip, HTTP/2, 3-attempt exponential backoff on IO errors, 429 short-circuit (the shared policy + error types exist in mochy-net since Phase 02; this is the InnerTube.kt request-shaping port)
-- [ ] Guest visitor-data scraping + rotation (`BotDetectionMitigator` semantics); HANDOFF entry
+- [x] InnerTube transport port: per-request header injection, gzip, HTTP/2, 3-attempt exponential backoff on IO errors, 429 short-circuit (done in Phase 04 by its task prompt — `InnerTubeTransport` + the 22-endpoint layer)
+- [x] Guest visitor-data scraping + rotation (`BotDetectionMitigator` semantics) (done in Phase 04 — `guest.rs` + the mirror's scrape hooks)
+- [x] DTO layer (serde) for search/browse/next/player/queue/suggestions/transcript/account/playlist ops/like-subscription responses; comments stack + LibraryAlbumsPage + AddItemYouTubePlaylistResponse skipped as dead (PORT_SPEC §4)
+- [x] 21 parsers + 2 glue files (`PageHelper`, `BrowseResult`) as pure functions DTO → domain; NewPipe.kt deferred to Phase 08 (extractor bridge, not a parser)
+- [x] YouTube facade (YouTube.kt, 1,814 lines): search variants + filters, home/album/artist/playlist/next/radio/queue, suggestions, like/subscribe, library add/remove, playlist CRUD (50-per-batch, resumable thumbnail upload), history, transcripts, timedtext, videostats, RYD media info — 50-request ceiling through `ContinuationPager`; coverage table in HANDOFF
+- [x] Contract fixture corpus (24 synthetic fixtures, `scripts/gen_fixtures.py`) + parser tests over the corpus + serde round-trips + offline facade wire tests; HANDOFF entry
 
 ### Phase 06 — Models, parsers, browse/search (mochy-innertube)
-- [ ] kotlinx-serialization DTO equivalents; 21 page parsers + 2 glue files
-- [ ] Continuation pagination (opaque tokens, seen-set dedup, 50-request caller-side ceiling)
-- [ ] search/browse/album/artist/playlist/next endpoints; contract tests on recorded fixtures; HANDOFF entry
+- [x] kotlinx-serialization DTO equivalents; 21 page parsers + 2 glue files (done in Phase 05 by its task prompt — `models/` + `pages/`; comments stack and LibraryAlbumsPage skipped as dead)
+- [x] Continuation pagination (opaque tokens, seen-set dedup, 50-request caller-side ceiling) (the `ContinuationPager` helper — done in Phase 04; the facade's use of it remains) (the facade use landed with the Phase 05 parser work)
+- [x] search/browse/album/artist/playlist/next endpoints (typed facade over the Phase 04 endpoint layer); contract tests on recorded fixtures; HANDOFF entry (done in Phase 05 — the `YouTube` facade + `tests/parsers.rs`/`tests/facade_wire.rs` corpus)
 
 ### Phase 07 — Client registry + auth (mochy-innertube)
-- [ ] 18-client registry (WEB…VISIONOS; ANDROID_NO_SDK excluded as dead)
-- [ ] Cookie auth + SAPISIDHASH (SHA-1 of `time SAPISID origin`, origin-bound), wry login window with cookie extraction
-- [ ] Account menu (name/email/handle/photo), sign-out forgets keys; vault integration; HANDOFF entry
+- [x] 18-client registry (WEB…VISIONOS; ANDROID_NO_SDK excluded as dead) (done in Phase 04 — verbatim port + roles; ANDROID_NO_SDK registered but unwired)
+- [x] Cookie auth + SAPISIDHASH (SHA-1 of `time SAPISID origin`, origin-bound) (done in Phase 04 — `auth.rs` + transport injection + mirror; the vault holds the secrets)
+- [ ] wry login window with cookie extraction; account menu (name/email/handle/photo) over the Phase 04 endpoint; sign-out forgets keys; HANDOFF entry
 
 ### Phase 08 — Stream resolution (mochy-innertube) — CP M1
 - [ ] Client walk from VISIONOS through logged-in prefix + fallbacks; skip loginRequired when signed out

@@ -1,0 +1,77 @@
+{
+  "responseContext": { "visitorData": "<redacted:visitordata>", "serviceTrackingParams": [] },
+  "playabilityStatus": { "status": "OK", "reason": null },
+  "playerConfig": { "audioConfig": { "loudnessDb": -6.5, "perceptualLoudnessDb": -6.5 } },
+  "streamingData": {
+    "formats": [
+      {
+        "itag": 140,
+        "url": "https://rr1---sn-1.visionos.example.com/videoplayback?id=SONG1&itag=140",
+        "mimeType": "audio/mp4; codecs=\"mp4a.40.2\"",
+        "bitrate": 130000,
+        "quality": "tiny",
+        "approxDurationMs": "225000",
+        "audioSampleRate": 44100,
+        "audioChannels": 2,
+        "loudnessDb": -6.5,
+        "lastModified": 1730000000000,
+        "contentLength": 3657600,
+        "averageBitrate": 129706,
+        "audioQuality": "AUDIO_QUALITY_LOW",
+        "initRange": { "start": "0", "end": "653" },
+        "indexRange": { "start": "654", "end": "1021" }
+      }
+    ],
+    "adaptiveFormats": [
+      {
+        "itag": 251,
+        "url": "https://rr1---sn-1.visionos.example.com/videoplayback?id=SONG1&itag=251",
+        "mimeType": "audio/webm; codecs=\"opus\"",
+        "bitrate": 144000,
+        "quality": "tiny",
+        "approxDurationMs": "225000",
+        "audioSampleRate": 48000,
+        "audioChannels": 2,
+        "loudnessDb": -6.5,
+        "contentLength": 4050000,
+        "audioQuality": "AUDIO_QUALITY_MEDIUM",
+        "initRange": { "start": "0", "end": "265" },
+        "indexRange": { "start": "266", "end": "833" }
+      },
+      {
+        "itag": 18,
+        "url": "https://rr1---sn-1.visionos.example.com/videoplayback?clen=2000&dur=225.0&itag=18&lmt=1730000000000",
+        "mimeType": "video/mp4; codecs=\"avc1.42001E, mp4a.40.2\"",
+        "bitrate": 400000,
+        "width": 640,
+        "height": 360,
+        "quality": "medium",
+        "qualityLabel": "360p",
+        "fps": 30
+      }
+    ],
+    "expiresInSeconds": 21540
+  },
+  "videoDetails": {
+    "videoId": "SONG1",
+    "title": "Song One",
+    "author": "Song One - Topic",
+    "channelId": "UC_topic_song1",
+    "lengthSeconds": "225",
+    "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
+    "viewCount": "123456",
+    "thumbnail": { "thumbnails": [ { "url": "https://i.ytimg.com/vi/SONG1/544.jpg", "width": 544, "height": 544 } ] }
+  },
+  "playbackTracking": {
+    "videostatsPlaybackUrl": { "baseUrl": "https://s.youtube.com/api/stats/playback?cpn=abc&docid=SONG1" },
+    "videostatsWatchtimeUrl": { "baseUrl": "https://s.youtube.com/api/stats/watchtime?cpn=abc&docid=SONG1&len=225" },
+    "atrUrl": { "baseUrl": "https://s.youtube.com/api/stats/atr?cpn=abc" }
+  },
+  "captions": {
+    "playerCaptionsTracklistRenderer": {
+      "captionTracks": [
+        { "baseUrl": "https://www.youtube.com/api/timedtext?v=SONG1&lang=en&kind=asr&fmt=json3", "languageCode": "en-US", "kind": "asr" }
+      ]
+    }
+  }
+}

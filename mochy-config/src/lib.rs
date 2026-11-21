@@ -41,7 +41,7 @@ pub use enums::*;
 pub use registry::*;
 pub use store::{
     ConfigError, PERSISTED_FORMAT, PERSISTED_VERSION, Settings, SettingsStore, WatchError,
-    WatchGuard,
+    WatchEvent, WatchGuard,
 };
 pub use stores::{PREFS_STORES, PrefsStore, TRANSFER_CARRIED_STORES, store_by_name};
 

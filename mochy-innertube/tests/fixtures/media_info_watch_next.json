@@ -1,0 +1,32 @@
+{
+  "contents": {
+    "twoColumnWatchNextResults": {
+      "results": {
+        "results": {
+          "content": [
+            {
+              "videoPrimaryInfoRenderer": {
+                "title": { "runs": [ { "text": "Song One" } ] },
+                "viewCount": { "videoViewCountRenderer": { "viewCount": { "simpleText": "123,456 views" } } },
+                "dateText": { "simpleText": "Jan 1, 2021" }
+              }
+            },
+            {
+              "videoSecondaryInfoRenderer": {
+                "owner": {
+                  "videoOwnerRenderer": {
+                    "thumbnail": { "thumbnails": [ { "url": "//yt3.ggpht.com/s48/a.jpg", "width": 48, "height": 48 } ] },
+                    "subscriberCountText": { "simpleText": "1.2M subscribers" },
+                    "title": { "runs": [ { "text": "Artist A - Topic" } ] },
+                    "navigationEndpoint": { "browseEndpoint": { "browseId": "UCA1" } }
+                  }
+                },
+                "attributedDescription": { "content": "Provided to YouTube by Auto-generated" }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
