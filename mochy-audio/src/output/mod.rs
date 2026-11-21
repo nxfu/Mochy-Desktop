@@ -39,13 +39,13 @@
 
 pub mod cpal_shared;
 
-#[cfg(all(windows, feature = "exclusive-win"))]
-pub mod wasapi_win;
 #[cfg(all(target_os = "linux", feature = "exclusive-linux"))]
 pub mod alsa_linux;
+#[cfg(all(windows, feature = "exclusive-win"))]
+pub mod wasapi_win;
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 
 use crate::precision::TpdfDither;
@@ -156,13 +156,7 @@ pub fn verify_exclusive(
         return fail(Some(report.sharing), None, None, None, None);
     }
     if report.rate != request.rate {
-        return fail(
-            None,
-            Some(report.rate),
-            None,
-            None,
-            None,
-        );
+        return fail(None, Some(report.rate), None, None, None);
     }
     if report.channels != request.channels {
         return fail(None, None, Some(report.channels), None, None);
@@ -171,9 +165,10 @@ pub fn verify_exclusive(
         return fail(None, None, None, Some(report.format), None);
     }
     if let Some((hw_rate, hw_format)) = report.hardware
-        && (hw_rate != request.rate || hw_format != request.format) {
-            return fail(None, None, None, None, Some((hw_rate, hw_format)));
-        }
+        && (hw_rate != request.rate || hw_format != request.format)
+    {
+        return fail(None, None, None, None, Some((hw_rate, hw_format)));
+    }
     Ok(())
 }
 
@@ -198,6 +193,25 @@ pub struct OpenedStream {
 }
 
 impl OpenedStream {
+    /// Assembles a stream from a backend's parts. `pub(crate)`: the
+    /// in-tree backends live in child modules (private-field access),
+    /// but the USB driver sits in `crate::usb` and needs this door —
+    /// gated to exactly the configs that driver compiles in.
+    #[cfg(all(feature = "usb-uac", any(windows, target_os = "linux")))]
+    pub(crate) fn from_parts(
+        report: StreamReport,
+        delay_us: Arc<AtomicU64>,
+        stop: Box<dyn FnOnce() + Send>,
+        stopped: Arc<std::sync::atomic::AtomicBool>,
+    ) -> OpenedStream {
+        OpenedStream {
+            report,
+            delay_us,
+            stop,
+            stopped,
+        }
+    }
+
     /// The measured callback-to-output delay, in microseconds — cpal's
     /// `playback - callback` timestamp delta, WASAPI's stream latency,
     /// ALSA's pcm delay, or the USB feedback pace. Phase 20 consumes
@@ -517,7 +531,11 @@ pub struct EdgeConverter {
 
 impl EdgeConverter {
     /// A shared-path converter (dithers 16-bit containers).
-    pub fn new_shared(format: OutputFormat, container_bits: u32, source_bits: u32) -> EdgeConverter {
+    pub fn new_shared(
+        format: OutputFormat,
+        container_bits: u32,
+        source_bits: u32,
+    ) -> EdgeConverter {
         EdgeConverter {
             format,
             container_bits,
@@ -845,7 +863,11 @@ mod tests {
             .ensure(&shared_request(48_000), || Box::new(Silence))
             .unwrap();
         assert_eq!(first, second);
-        assert_eq!(backend.opens.load(Ordering::Acquire), 1, "reopened needlessly");
+        assert_eq!(
+            backend.opens.load(Ordering::Acquire),
+            1,
+            "reopened needlessly"
+        );
     }
 
     #[test]
@@ -907,7 +929,7 @@ mod tests {
     #[test]
     fn device_loss_closes_and_signals() {
         let backend = Arc::new(MockBackend::default());
-        let router = Arc::new(OutputRouter::new(backend.clone()));
+        let router = OutputRouter::new(backend.clone());
         backend.devices.lock().unwrap().push(MockDevice {
             id: "default".into(),
             exact: true,
@@ -984,7 +1006,9 @@ mod tests {
         converter.convert(&[0.5; 10], &mut block);
         let (_, bytes) = block.as_packed().unwrap();
         let words: Vec<i16> = bytes
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|c| i16::from_le_bytes([c[0], c[1]]))
             .collect();
         assert!(words.iter().all(|w| *w == 16_384), "words: {words:?}");

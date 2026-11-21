@@ -2391,6 +2391,7 @@ dependencies = [
  "alsa",
  "cpal",
  "ffmpeg-next",
+ "libc",
  "rusb",
  "symphonia",
  "symphonia-adapter-fdk-aac",
@@ -2499,6 +2500,10 @@ dependencies = [
 [[package]]
 name = "mochy-player"
 version = "0.1.0"
+dependencies = [
+ "mochy-audio",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "mochy-ui-browse"

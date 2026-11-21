@@ -12,10 +12,12 @@
 
 pub mod bytecache;
 pub mod decode;
+pub mod output;
 pub mod pcm;
 pub mod precision;
 pub mod sinc;
 pub mod source;
+pub mod usb;
 
 #[cfg(test)]
 mod tests {

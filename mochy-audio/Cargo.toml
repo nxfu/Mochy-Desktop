@@ -38,7 +38,7 @@ workspace = true
 [features]
 exclusive-win = ["dep:wasapi"]
 exclusive-linux = ["dep:alsa"]
-usb-uac = ["dep:rusb"]
+usb-uac = ["dep:rusb", "dep:libc"]
 video = ["dep:ffmpeg-next"]
 fdk-aac = ["dep:symphonia-adapter-fdk-aac"]
 
@@ -62,4 +62,5 @@ cpal = { workspace = true }
 wasapi = { workspace = true, optional = true }
 alsa = { workspace = true, optional = true }
 rusb = { workspace = true, optional = true }
+libc = { workspace = true, optional = true }
 ffmpeg-next = { workspace = true, optional = true }

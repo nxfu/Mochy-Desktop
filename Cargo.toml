@@ -203,6 +203,11 @@ rubato = "5.1.0"
 # is upgraded.
 wasapi = "0.27.0"      # `exclusive-win` (Windows)
 alsa = "0.11.0"        # `exclusive-linux` (Linux; keep in sync with cpal!)
+# rusb's FFI surface takes `libc::timeval` by reference for the event
+# wait, so the USB driver needs the platform types directly (libc is
+# already in the graph via cpal/alsa; pinned here so mochy-audio does
+# not float it).
+libc = "0.2"           # `usb-uac` (platform types for libusb's FFI)
 rusb = "0.9.4"         # `usb-uac` (Win/Linux experimental)
 ffmpeg-next = "9.1.0"  # `video` (optional backend)
 
