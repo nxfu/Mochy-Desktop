@@ -525,11 +525,19 @@ impl ClientRegistry {
         registry
     }
 
-    /// Load overrides from a JSON file on disk (missing file = no overrides).
+    /// Load overrides from a JSON file on disk. A missing file is not
+    /// an error — the hotfix seam simply has nothing to apply (the
+    /// 2026-11-21 audit aligned the behavior with this contract).
     pub fn load_overrides(path: &std::path::Path) -> Result<ClientRegistry, std::io::Error> {
-        let text = std::fs::read_to_string(path)?;
-        let json: serde_json::Value = serde_json::from_str(&text).map_err(std::io::Error::other)?;
-        Ok(ClientRegistry::from_json(&json))
+        match std::fs::read_to_string(path) {
+            Ok(text) => {
+                let json: serde_json::Value =
+                    serde_json::from_str(&text).map_err(std::io::Error::other)?;
+                Ok(ClientRegistry::from_json(&json))
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(ClientRegistry::new()),
+            Err(error) => Err(error),
+        }
     }
 
     /// Apply one version override at runtime.
@@ -608,7 +616,8 @@ pub mod roles {
         ClientKey::TvHtml5Downgraded,
     ];
 
-    /// `YTPlayerUtils.kt:1467-1471` — `CAPTION_CLIENTS`.
+    /// `YouTube.kt:1467-1471` — `CAPTION_CLIENTS` (the caption walk
+    /// lives in the innertube facade, not YTPlayerUtils).
     pub const CAPTION_CLIENTS: &[ClientKey] = &[
         ClientKey::AndroidVrNoAuth,
         ClientKey::Ios,

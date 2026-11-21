@@ -780,7 +780,10 @@ impl InnerTubeTransport {
     }
 
     /// `playlist_image_upload` step 2 (InnerTube.kt:684-699): the
-    /// upload+finalize with the raw image body.
+    /// upload+finalize with the raw image body — `setBody(image)` in
+    /// ktor sends the untouched bytes (defaulting the content type to
+    /// application/octet-stream); the 2026-11-21 audit fixed this from
+    /// a lossy JSON-string body that corrupted every non-ASCII byte.
     pub async fn playlist_image_upload_finalize(
         &self,
         client: &YouTubeClient,
@@ -808,14 +811,14 @@ impl InnerTubeTransport {
         request
             .headers
             .push(("X-Goog-Upload-Offset".into(), "0".into()));
-        request.body = Some(serde_json::Value::String(
-            String::from_utf8_lossy(&image).into_owned(),
-        ));
+        request.raw_body = Some(image);
         self.send_json(request).await
     }
 
     /// `timedtext` (InnerTube.kt:427-432): GET `baseUrl` with `fmt=json3`
-    /// and the client's user agent (no other client headers).
+    /// and the client's user agent — the one header ktor's `timedText`
+    /// adds on top of the shared defaults (no X-YouTube-Client-* set,
+    /// no prettyPrint; the 2026-11-21 audit restored this).
     pub async fn timed_text(
         &self,
         base_url: &str,
@@ -824,6 +827,10 @@ impl InnerTubeTransport {
         let mut request =
             ShapedRequest::endpoint(reqwest::Method::GET, "timedtext", client, false, None);
         request.url = base_url.to_owned();
+        request.use_client_headers = false;
+        request
+            .headers
+            .push(("User-Agent".into(), client.user_agent.clone()));
         request.query.push(("fmt".into(), "json3".into()));
         request.cacheable = true;
         self.send_json(request).await
@@ -949,8 +956,9 @@ impl InnerTubeTransport {
             .await
             .map_err(|e| InnertubeError::Net(NetError::from(e)))?;
         let status = response.status();
-        // PoTokenWebView.kt:270-273 — non-200 is fatal for the engine boot
-        if !status.is_success() {
+        // PoTokenWebView.kt:270-273 — non-200 is fatal for the engine
+        // boot (upstream compares `httpCode != 200` exactly, not 2xx)
+        if status.as_u16() != 200 {
             return Err(InnertubeError::Net(mochy_net::NetError::Http {
                 status,
                 url,

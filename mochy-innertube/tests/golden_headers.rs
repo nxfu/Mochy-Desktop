@@ -439,8 +439,11 @@ async fn rate_limit_short_circuits_the_transport() {
 }
 
 /// The resumable playlist-image upload handshake: start captures
-/// `x-guploader-uploadid`, finalize carries it as a query param
-/// (InnerTube.kt:670-699).
+/// `x-guploader-uploadid`, finalize carries it as a query param and
+/// ships the image as untouched raw bytes (InnerTube.kt:670-699 —
+/// `setBody(ByteArray)`, not a JSON string; the binary assertions are
+/// the 2026-11-21 audit's regression coverage for the corrupting
+/// JSON-quoted body).
 #[tokio::test]
 async fn playlist_image_upload_handshake() {
     let (addr, captured, server) = serve_responses(vec![
@@ -456,8 +459,11 @@ async fn playlist_image_upload_handshake() {
         .await
         .unwrap();
     assert_eq!(upload_id, "UPLOAD123");
+    // PNG magic + a lone 0xFF: invalid UTF-8, so any lossy or JSON-
+    // quoted encoding changes the bytes
+    let image: Vec<u8> = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0xFF, 0xFE];
     transport
-        .playlist_image_upload_finalize(&client, &upload_id, b"fakepngbytes!".to_vec())
+        .playlist_image_upload_finalize(&client, &upload_id, image.clone())
         .await
         .unwrap();
     server.await.unwrap();
@@ -497,6 +503,53 @@ async fn playlist_image_upload_handshake() {
         finalize.query("upload_protocol").as_deref(),
         Some("resumable")
     );
+    // the body is the untouched binary image — byte-exact, octet-stream
+    assert_eq!(finalize.body_bytes(), image, "raw image bytes must survive");
+    assert_eq!(
+        finalize.header("Content-Type").as_deref(),
+        Some("application/octet-stream".to_owned()).as_deref()
+    );
+    assert_eq!(
+        finalize.header("Content-Length").as_deref(),
+        Some(image.len().to_string()).as_deref()
+    );
+    // and it is not the old corrupting shape (a JSON-quoted string)
+    assert!(!finalize.body().starts_with('"'));
+}
+
+/// `timedtext` (InnerTube.kt:427-432): the caption GET carries only the
+/// client's user agent over the shared defaults — none of the
+/// `ytClient` header set, no prettyPrint (the 2026-11-21 audit's
+/// regression coverage for the over-headered shape).
+#[tokio::test]
+async fn timed_text_sends_only_the_user_agent() {
+    let (addr, captured, server) = serve_responses(vec![empty_json()]).await;
+    let session = session_with(None, None);
+    let transport = test_transport(session, addr);
+    let client = ClientRegistry::new().get(ClientKey::Ios);
+    transport
+        .timed_text("https://www.youtube.com/api/timedtext", &client)
+        .await
+        .unwrap();
+    server.await.unwrap();
+    let request = &captured.lock().unwrap()[0];
+    assert!(
+        request
+            .request_line()
+            .starts_with("GET /api/timedtext?fmt=json3"),
+        "{}",
+        request.request_line()
+    );
+    assert_eq!(
+        request.header("User-Agent").as_deref(),
+        Some(client.user_agent.as_str())
+    );
+    assert_eq!(request.header("X-YouTube-Client-Name"), None);
+    assert_eq!(request.header("X-YouTube-Client-Version"), None);
+    assert_eq!(request.header("X-Goog-Api-Format-Version"), None);
+    assert_eq!(request.header("X-Origin"), None);
+    assert_eq!(request.query("prettyPrint"), None);
+    assert_eq!(request.query("fmt").as_deref(), Some("json3"));
 }
 
 /// videostats play reporting: the s.youtube.com url is rewritten to the

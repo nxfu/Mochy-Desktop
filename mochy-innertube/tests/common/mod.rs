@@ -128,6 +128,9 @@ pub mod serve {
     #[derive(Debug, Clone)]
     pub struct CapturedRequest {
         pub head: String,
+        /// The raw bytes as they arrived (binary bodies survive here;
+        /// `head` is the lossy text view).
+        pub raw: Vec<u8>,
     }
 
     impl CapturedRequest {
@@ -205,6 +208,16 @@ pub mod serve {
             match self.head.split_once("\r\n\r\n") {
                 Some((_, body)) => body.to_owned(),
                 None => String::new(),
+            }
+        }
+
+        /// The request body as raw bytes — the assertion to use for
+        /// binary payloads (the resumable-upload finalize).
+        pub fn body_bytes(&self) -> Vec<u8> {
+            let text = String::from_utf8_lossy(&self.raw).into_owned();
+            match text.find("\r\n\r\n") {
+                Some(split) => self.raw[split + 4..].to_vec(),
+                None => Vec::new(),
             }
         }
     }
@@ -317,9 +330,10 @@ pub mod serve {
                                     }
                                 }
                                 let head_text = String::from_utf8_lossy(&head).into_owned();
-                                seen.lock()
-                                    .unwrap()
-                                    .push(CapturedRequest { head: head_text });
+                                seen.lock().unwrap().push(CapturedRequest {
+                                    head: head_text,
+                                    raw: head.clone(),
+                                });
                                 let next = queued.lock().unwrap().pop_front();
                                 match next {
                                     Some(response) => {

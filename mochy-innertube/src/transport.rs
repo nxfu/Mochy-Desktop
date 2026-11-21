@@ -372,7 +372,14 @@ impl InnerTubeTransport {
         if !request.query.is_empty() {
             builder = builder.query(&request.query);
         }
-        if let Some(body) = &request.body {
+        if let Some(bytes) = &request.raw_body {
+            // ktor's `setBody(ByteArray)` ships the untouched bytes as
+            // application/octet-stream (InnerTube.kt:697) — the
+            // resumable-upload finalize is the one raw-body endpoint
+            builder = builder
+                .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+                .body(bytes.clone());
+        } else if let Some(body) = &request.body {
             builder = builder.json(body);
         } else if request.json_content_type {
             builder = builder.header(reqwest::header::CONTENT_TYPE, "application/json");
@@ -456,6 +463,10 @@ pub(crate) struct ShapedRequest {
     pub headers: Vec<(String, String)>,
     pub query: Vec<(String, String)>,
     pub body: Option<Json>,
+    /// A pre-encoded binary body (`setBody(ByteArray)` upstream — only
+    /// the resumable-upload finalize uses it); takes precedence over
+    /// [`Self::body`] and is never sent as JSON.
+    pub raw_body: Option<Vec<u8>>,
     /// Send `Content-Type: application/json` with no body
     /// (InnerTube.kt:159 + 412-414).
     pub json_content_type: bool,
@@ -487,6 +498,7 @@ impl ShapedRequest {
             headers: Vec::new(),
             query: Vec::new(),
             body: None,
+            raw_body: None,
             json_content_type: false,
             cacheable: false,
             capture_headers: Vec::new(),

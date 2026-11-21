@@ -240,3 +240,46 @@ async fn facade_history_first_page_over_the_wire() {
     );
     handle.abort();
 }
+
+/// `search_summary(query)` (YouTube.kt:195-237) over search.json — the
+/// flat item-section results must parse through SearchSummaryPage so a
+/// flat PLAYLIST lands in the "Playlists" group (the 2026-11-21 audit's
+/// regression coverage: the old SearchSuggestionPage routing dropped
+/// playlists entirely, so the group could never populate).
+#[tokio::test]
+async fn facade_search_summary_groups_flat_playlists() {
+    let (addr, captured, handle) =
+        serve_responses(vec![json_response(&fixture_text("search"))]).await;
+    let youtube = facade(guest_session(), addr);
+
+    let summary = youtube.search_summary("artist a").await.expect("summary");
+    let groups: Vec<(&str, usize)> = summary
+        .summaries
+        .iter()
+        .map(|group| (group.title.as_str(), group.items.len()))
+        .collect();
+    assert!(
+        groups.contains(&("Playlists", 1)),
+        "the flat playlist must land in the Playlists group: {groups:?}"
+    );
+    let playlist_group = summary
+        .summaries
+        .iter()
+        .find(|group| group.title == "Playlists")
+        .unwrap();
+    match &playlist_group.items[0] {
+        YTItem::Playlist(playlist) => {
+            assert_eq!(playlist.id, "PLchillmix");
+            assert_eq!(playlist.title, "Chill Mix");
+            assert_eq!(
+                playlist.author.as_ref().map(|artist| artist.name.as_str()),
+                Some("Artist C")
+            );
+        }
+        other => panic!("expected a playlist, got {other:?}"),
+    }
+    let requests = captured.lock().unwrap();
+    assert_eq!(requests.len(), 1);
+    assert!(requests[0].path().ends_with("/youtubei/v1/search"));
+    handle.abort();
+}

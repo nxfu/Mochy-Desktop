@@ -238,6 +238,32 @@ def search_fixture():
         },
         "navigationEndpoint": browse_endpoint("MPREb_albumC", "MUSIC_PAGE_TYPE_ALBUM"),
     }
+    # a playlist in the flat item section — the 2026-11-21 audit's
+    # regression case for search_summary's "Playlists" group (the flat
+    # path must parse through SearchSummaryPage, which keeps playlists)
+    item_section_playlist = {
+        "flexColumns": [
+            flex([plain_run("Chill Mix")]),
+            flex([
+                plain_run("Playlist"),
+                sep(),
+                artist_run("Artist C", "UCC3"),
+                sep(),
+                plain_run("50 songs"),
+            ]),
+        ],
+        "thumbnail": thumbnails("PLC"),
+        "overlay": {
+            "musicItemThumbnailOverlayRenderer": {
+                "content": {
+                    "musicPlayButtonRenderer": {
+                        "playNavigationEndpoint": watch_playlist("PLchillmix")
+                    }
+                }
+            }
+        },
+        "navigationEndpoint": browse_endpoint("VLPLchillmix", "MUSIC_PAGE_TYPE_PLAYLIST"),
+    }
     card_shelf_song = {
         "flexColumns": [
             song_flex_title("Song One", "SONG1"),
@@ -332,7 +358,8 @@ def search_fixture():
                                         {
                                             "itemSectionRenderer": {
                                                 "contents": [
-                                                    {"musicResponsiveListItemRenderer": item_section_album}
+                                                    {"musicResponsiveListItemRenderer": item_section_album},
+                                                    {"musicResponsiveListItemRenderer": item_section_playlist},
                                                 ]
                                             }
                                         },

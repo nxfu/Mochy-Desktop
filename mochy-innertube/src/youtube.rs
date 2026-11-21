@@ -409,13 +409,20 @@ impl YouTube {
         }
 
         // the flat item-section results group into Songs/Videos/Albums/
-        // Artists/Playlists (YouTube.kt:201-232)
+        // Artists/Playlists (YouTube.kt:201-232) — through the SAME
+        // SearchSummaryPage parser as the card shelves (the 2026-11-21
+        // audit fixed this from SearchSuggestionPage, which dropped
+        // flat playlists, lost song durations/library tokens and
+        // treated artist endpoints as optional where upstream requires
+        // them)
         let flat_items: Vec<YTItem> = contents
             .iter()
             .filter_map(|content| content.item_section_renderer.as_ref())
             .flat_map(|section| section.contents.as_deref().unwrap_or_default())
             .filter_map(|content| content.music_responsive_list_item_renderer.as_ref())
-            .filter_map(SearchSuggestionPage::from_music_responsive_list_item_renderer)
+            .filter_map(|renderer| {
+                SearchSummaryPageParser::from_music_responsive_list_item_renderer(renderer, None)
+            })
             .collect();
 
         let mut grouped_summaries = Vec::new();
