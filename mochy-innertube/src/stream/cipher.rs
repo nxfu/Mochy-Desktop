@@ -197,7 +197,9 @@ impl PlayerJsFetcher {
         transport: &crate::transport::InnerTubeTransport,
     ) -> Result<Option<String>, InnertubeError> {
         let body = transport.raw_text_get(IFRAME_API_URL, FETCH_UA).await?;
-        let hash_regex = Regex::new(r"/s/player/([a-zA-Z0-9_-]+)/").unwrap();
+        // PlayerJsFetcher.kt:25 — the hash regex tolerates escaped
+        // separators (JSON-embedded bodies carry `\\/s\\/player\\/`)
+        let hash_regex = Regex::new(r"\\?/s\\?/player\\?/([a-zA-Z0-9_-]+)\\?/").unwrap();
         Ok(hash_regex
             .captures(&body)
             .map(|captures| captures[1].to_owned()))
@@ -336,6 +338,14 @@ pub struct CipherRuntime {
     n_function_available: bool,
     #[allow(dead_code)] // surfaced through n_function_available
     discovered_n_function: Option<String>,
+    /// `sigInfo.constantArg` (FunctionNameExtractor.kt:32-35): the
+    /// constant first argument the extracted sig function is called
+    /// with on modern players (`Qq(24, decodeURIComponent(b))`) —
+    /// `deobfuscateSig` threads it as `func(constantArg, sig)`
+    /// (CipherWebView.kt:99-104). The 2026-11-21 audit fixed the port
+    /// from dropping it, which broke every two-argument (pattern-1)
+    /// player script.
+    sig_constant_arg: Option<i64>,
 }
 
 impl CipherRuntime {
@@ -444,6 +454,7 @@ impl CipherRuntime {
             engine,
             n_function_available,
             discovered_n_function: discovered,
+            sig_constant_arg: sig_info.as_ref().and_then(|info| info.constant_arg),
         })
     }
 
@@ -455,16 +466,24 @@ impl CipherRuntime {
     /// `deobfuscateSignature` (CipherWebView.kt:224-239 +
     /// the HTML's `deobfuscateSig`, CipherWebView.kt:92-113): the
     /// function takes the obfuscated signature, optionally behind a
-    /// constant first argument.
+    /// constant first argument — `func(constantArg, obfuscatedSig)`
+    /// when the extractor captured one, `func(obfuscatedSig)`
+    /// otherwise, exactly the upstream branch (the 2026-11-21 audit
+    /// fixed the port from always calling `func(sig)`, which broke
+    /// every two-argument pattern-1 player script).
     pub async fn deobfuscate_signature(&self, obfuscated_sig: &str) -> Result<String, JsError> {
         let literal = serde_json::to_string(obfuscated_sig).unwrap_or_default();
+        let call = match self.sig_constant_arg {
+            Some(constant) => format!("func({constant}, {literal})"),
+            None => format!("func({literal})"),
+        };
         let code = format!(
             "(function () {{
                  var func = globalThis.__mochySigFunc;
                  if (typeof func !== 'function') {{
                      throw new Error('sig func not found on the engine (type: ' + typeof func + ')');
                  }}
-                 var out = func({literal});
+                 var out = {call};
                  if (out === undefined || out === null) {{
                      throw new Error('sig function returned null/undefined');
                  }}
@@ -694,10 +713,12 @@ mod tests {
     /// `})(_yt_player);` tail, a signature function reached through the
     /// pattern-1 trigger and an n-transform function on the window
     /// (discoverable by the brute force when the pattern catalog
-    /// misses it).
+    /// misses it). The sig function has the modern TWO-parameter shape
+    /// (`function Qq(constant, sig)`) — what pattern 1's
+    /// `Qq(24, decodeURIComponent(b))` call site actually invokes.
     const MINI_PLAYER: &str = r#"var _yt_player={};(function(g){
 var window=this;
-function Qq(sig){return sig.split("").reverse().join("");}
+function Qq(constant, sig){return sig.split("").reverse().join("")+"-"+constant;}
 window.W7=function(n){
     var out="";
     for (var i=0;i<n.length;i++){out+=String.fromCharCode(n.charCodeAt(i)+1);}
@@ -793,13 +814,34 @@ c&&window.W7&&(c=window.W7(decodeURIComponent(c)));
         assert_eq!(info.constant_arg, Some(24));
         assert_eq!(
             runtime.deobfuscate_signature("abc123").await.unwrap(),
-            "321cba"
+            // the "-24" suffix proves the constant first argument is
+            // threaded (CipherWebView.kt:99-104) — the 2026-11-21
+            // audit's regression coverage for the dropped-argument bug
+            "321cba-24"
         );
         // no n-pattern matches the mini player: the brute force finds
         // window.W7 by its _w8_-carrying answer
         assert!(runtime.n_function_available());
         let transformed = runtime.transform_n("bbbb").await.unwrap();
         assert!(transformed.starts_with("_w8_"), "{transformed}");
+    }
+
+    /// The classic single-argument shape still works without a
+    /// constant (`func(obfuscatedSig)`, CipherWebView.kt:107-109).
+    #[tokio::test]
+    async fn single_argument_sig_functions_are_called_without_a_constant() {
+        let player = r#"var _yt_player={};(function(g){
+var window=this;
+function Z9(sig){return sig.split("").reverse().join("");}
+var c,d;
+c&&d.set("alr",encodeURIComponent(Z9(c)));
+})(_yt_player);"#;
+        let engine = Arc::new(Engine::new().unwrap());
+        let runtime = CipherRuntime::create(engine, player).await.unwrap();
+        let info = extract_sig_function_info(player).unwrap();
+        assert_eq!(info.name, "Z9");
+        assert_eq!(info.constant_arg, None);
+        assert_eq!(runtime.deobfuscate_signature("xyz").await.unwrap(), "zyx");
     }
 
     #[tokio::test]

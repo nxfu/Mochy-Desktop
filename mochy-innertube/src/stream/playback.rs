@@ -292,7 +292,12 @@ impl StreamEngine {
 
     /// The lazily compiled EJS solver (EjsNTransformSolver.kt:62-85
     /// `getOrCreateSolver`): built over the current player script the
-    /// first time an n-parameter needs solving.
+    /// first time an n-parameter needs solving. A player-script fetch
+    /// failure degrades to "no solver" — upstream's
+    /// `PlayerJsFetcher.getPlayerJs()` catches every exception and
+    /// answers null, so the walk keeps the untransformed URL (the
+    /// 2026-11-21 audit fixed the port from aborting the whole walk
+    /// here).
     pub(crate) async fn ejs_solver(
         &self,
         transport: &InnerTubeTransport,
@@ -301,8 +306,13 @@ impl StreamEngine {
         if let Some(solver) = guard.as_ref() {
             return Ok(Some(Arc::clone(solver)));
         }
-        let Some(player_js) = self.cipher.player_js(transport).await? else {
-            return Ok(None);
+        let player_js = match self.cipher.player_js(transport).await {
+            Ok(Some(player_js)) => player_js,
+            Ok(None) => return Ok(None),
+            Err(error) => {
+                tracing::warn!(target: "mochy_stream", error = %error, "player js fetch failed; the ejs solver stays unavailable and the url passes through untransformed");
+                return Ok(None);
+            }
         };
         match EjsSolver::compile(Arc::clone(&self.js), &player_js).await {
             Ok(solver) => {

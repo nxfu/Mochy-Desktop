@@ -179,7 +179,11 @@ impl BotGuardSession {
             .ok_or_else(|| PoTokenError::BotGuard("obtainPoToken failed".into()))?;
         let token_bytes: Vec<u8> = serde_json::from_value(value)
             .map_err(|error| PoTokenError::BotGuard(error.to_string()))?;
-        Ok(base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(token_bytes))
+        // JavaScriptUtil.kt:70-78 `u8ToBase64`: okio's base64() emits
+        // PADDED base64, then only the alphabet is swapped — the '='
+        // padding stays (the 2026-11-21 audit fixed the port from
+        // stripping it)
+        Ok(base64::engine::general_purpose::URL_SAFE.encode(token_bytes))
     }
 }
 
@@ -316,6 +320,11 @@ impl PoTokenGenerator {
 
         let has_been_recreated = should_recreate;
         if should_recreate {
+            // upstream clears the session slot BEFORE recreating
+            // (PoTokenGenerator.kt:124-133): a failed boot or session
+            // mint must leave no stale session behind — the next call
+            // starts over instead of serving the old token
+            guard.take();
             let botguard =
                 Arc::new(BotGuardSession::boot(Arc::clone(&self.engine), transport).await?);
             let streaming_pot = botguard.mint(session_id).await?;

@@ -340,10 +340,24 @@ pub(crate) async fn resolve_playback_data(
         .and_then(|details| details.music_video_type.as_deref())
         .is_some_and(|kind| kind == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK");
 
+    // the status AFTER the WEB_CREATOR swap governs both the account
+    // prefix and the age-restricted restart (YTPlayerUtils.kt:504-520:
+    // `currentStatus` is read from the already-replaced
+    // mainPlayerResponse — the 2026-11-21 audit fixed the port from
+    // reading the pre-swap status, which spuriously prepended the
+    // account clients after a successful swap)
+    let current_status = main_player_response
+        .as_ref()
+        .and_then(|response| response.playability_status.as_ref())
+        .map(|status| status.status.clone())
+        .unwrap_or_default();
+    let is_age_restricted =
+        RESTRICTED_STATUSES.contains(&current_status.as_str()) && !main_bot_checked;
+
     // the main client's answer is reused at index -1, so it isn't
     // asked again as a fallback, and signed in the account's clients
     // come first when it couldn't serve (YTPlayerUtils.kt:514-520)
-    let main_served = main_status == "OK";
+    let main_served = current_status == "OK";
     let mut fallback_clients: Vec<YouTubeClient> = Vec::new();
     if is_logged_in && !main_served {
         fallback_clients.extend(
@@ -358,14 +372,6 @@ pub(crate) async fn resolve_playback_data(
             .filter(|key| **key != super::walk_keys::MAIN_CLIENT_KEY)
             .map(|key| registry.get(*key)),
     );
-
-    let current_status = main_player_response
-        .as_ref()
-        .and_then(|response| response.playability_status.as_ref())
-        .map(|status| status.status.clone())
-        .unwrap_or_default();
-    let is_age_restricted =
-        RESTRICTED_STATUSES.contains(&current_status.as_str()) && !main_bot_checked;
 
     let start_index = if main_player_response.is_none() || is_private_track || is_age_restricted {
         0
@@ -386,15 +392,23 @@ pub(crate) async fn resolve_playback_data(
     let mut chosen: Option<ChosenStream> = None;
     for client_index in walk_indices(start_index, fallback_clients.len()) {
         let (client, stream_player_response) = if client_index == usize::MAX {
-            (
-                main_client.clone(),
-                Some(
-                    retry_main_player_response
-                        .clone()
-                        .or_else(|| main_player_response.clone())
-                        .expect("index -1 only runs when the main answer exists"),
-                ),
-            )
+            // upstream: `usedAgeRestrictedClient ?: MAIN_CLIENT`
+            // (YTPlayerUtils.kt:624-628) — after the WEB_CREATOR swap
+            // the replayed answer belongs to WEB_CREATOR: its
+            // origin/Referer pair is what googlevideo validates the
+            // url against (the 2026-11-21 audit fixed the port from
+            // always attributing the replay to the main client)
+            let replay_client = used_age_restricted_client
+                .clone()
+                .unwrap_or_else(|| main_client.clone());
+            match retry_main_player_response
+                .clone()
+                .or_else(|| main_player_response.clone())
+            {
+                Some(response) => (replay_client, Some(response)),
+                None => continue, // unreachable while start_index's
+                                  // invariant holds; total, not panicking
+            }
         } else {
             let client = fallback_clients[client_index].clone();
             // skip loginRequired clients when signed out

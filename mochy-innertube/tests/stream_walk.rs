@@ -1257,3 +1257,181 @@ async fn the_ejs_engine_and_cipher_boot_lazily_and_survive() {
     // served everything — which it did
     assert!(harness.engine.has_po_token() == harness.engine.potoken.has_session_token());
 }
+
+/// The WEB_CREATOR age-restricted swap (YTPlayerUtils.kt:481-491 +
+/// 624-628): signed in, the main client reports AGE_CHECK_REQUIRED,
+/// WEB_CREATOR's answer replaces it, and the replayed answer at
+/// index -1 is attributed to WEB_CREATOR — the studio.youtube.com
+/// Referer/Origin pair rides the validation probe and the resolved
+/// stream, and NO account client is prepended (the post-swap status
+/// is OK; the 2026-11-21 audit's regression coverage for the -1 slot
+/// and main_served bugs).
+#[tokio::test]
+async fn an_age_restricted_swap_replays_the_creator_answer_as_web_creator() {
+    let mut responses = vec![
+        mint("CgtVISIONOSA"),
+        player_status("AGE_CHECK_REQUIRED", "Sign in to confirm your age"),
+        // the metadata client's PO-token mint fails, its STS lookup
+        // finds no player script, its own answer is consumed silently
+        CREATE_GARBAGE.to_owned(),
+        IFRAME_NO_HASH.to_owned(),
+        player_status("AGE_CHECK_REQUIRED", "Sign in to confirm your age"),
+        // WEB_CREATOR serves the restricted track
+        player_ok(251, 160_000, 4_000_000, 21_600),
+        // the probe on the creator url
+        PROBE_206.to_owned(),
+    ];
+    let expected = vec![
+        (
+            client_id(ClientKey::VisionOs),
+            "/youtubei/v1/visitor_id".to_owned(),
+        ),
+        (
+            client_id(ClientKey::VisionOs),
+            "/youtubei/v1/player".to_owned(),
+        ),
+        (String::new(), "/api/jnn/v1/Create".to_owned()),
+        (String::new(), "/iframe_api".to_owned()),
+        (
+            client_id(ClientKey::WebRemix),
+            "/youtubei/v1/player".to_owned(),
+        ),
+        (
+            client_id(ClientKey::WebCreator),
+            "/youtubei/v1/player".to_owned(),
+        ),
+        (String::new(), "/videoplayback".to_owned()),
+    ];
+    let (harness, captured, server) = harness(responses, signed_in_session()).await;
+    let request = PlaybackRequest::new("dQw4w9WgXcQ", high());
+    let data = resolve_playback(&harness.youtube, &harness.engine, &request)
+        .await
+        .expect("the creator swap serves the restricted track");
+    server.await.unwrap();
+    let requests = captured.lock().unwrap().clone();
+    let fingerprint = fingerprint(&requests);
+    assert_eq!(fingerprint, expected, "exact swap request sequence");
+    // the replayed answer is attributed to WEB_CREATOR...
+    assert_eq!(data.stream_client, "WEB_CREATOR");
+    // ...and its studio origin rides the stream headers
+    let header = |name: &str| {
+        data.stream_headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.clone())
+    };
+    assert_eq!(
+        header("Referer").as_deref(),
+        Some("https://studio.youtube.com/")
+    );
+    assert_eq!(
+        header("Origin").as_deref(),
+        Some("https://studio.youtube.com")
+    );
+    // ...and the probe carried the same pair (the studio origin, not
+    // the www one VISIONOS would have sent)
+    let probe = &requests[requests.len() - 1];
+    assert_eq!(probe.path(), "/videoplayback");
+    assert_eq!(
+        probe.header("Referer").as_deref(),
+        Some("https://studio.youtube.com/")
+    );
+    assert_eq!(
+        probe.header("Origin").as_deref(),
+        Some("https://studio.youtube.com")
+    );
+}
+
+/// A player-JS fetch failure must not abort the walk (the 2026-11-21
+/// audit's regression coverage for the propagated `?` in the EJS
+/// seam): upstream's PlayerJsFetcher catches every exception and
+/// answers null, so the n-carrying url passes through untransformed
+/// and the walk continues to a serving client.
+#[tokio::test]
+async fn a_player_js_fetch_failure_degrades_instead_of_failing_the_walk() {
+    // guest: VISIONOS is asked first; its url carries an n parameter,
+    // so the walk boots the EJS solver — whose player-JS fetch dies
+    // mid-HTTP (DEAD_CONNECTION). The walk must survive, use the
+    // untransformed url, and validate it.
+    let player_with_n = json_response(
+        &serde_json::json!({
+            "playabilityStatus": {"status": "OK"},
+            "videoDetails": {
+                "videoId": "dQw4w9WgXcQ",
+                "title": "Song",
+                "author": "Artist - Topic",
+                "lengthSeconds": "200",
+                "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
+            },
+            "streamingData": {
+                "expiresInSeconds": 21_600,
+                "adaptiveFormats": [{
+                    "itag": 251,
+                    "url": format!("{STREAM_HOST}/videoplayback?itag=251&n=abc123&mn=sn-abc"),
+                    "mimeType": "audio/webm; codecs=\"opus\"",
+                    "bitrate": 160_000,
+                    "audioQuality": "AUDIO_QUALITY_HIGH",
+                    "contentLength": 4_000_000,
+                }],
+            },
+        })
+        .to_string(),
+    );
+    let responses = vec![
+        mint("CgtGUESTVISITOR00"),
+        // the main client cannot serve; WEB_REMIX (a solvesN client)
+        // takes over with the n-carrying url
+        player_status("UNPLAYABLE", "Embedding disabled"),
+        // WEB_REMIX's lazy PO-token mint (fails to parse, no token)
+        CREATE_GARBAGE.to_owned(),
+        // WEB_REMIX's STS lookup finds no player hash
+        IFRAME_NO_HASH.to_owned(),
+        player_with_n,
+        // the EJS boot's player-JS fetch dies mid-response: the
+        // fetcher's error must degrade, not fail the walk
+        DEAD_CONNECTION.to_owned(),
+        // the probe on the (untransformed) url
+        PROBE_206.to_owned(),
+    ];
+    let expected = vec![
+        (
+            client_id(ClientKey::VisionOs),
+            "/youtubei/v1/visitor_id".to_owned(),
+        ),
+        (
+            client_id(ClientKey::VisionOs),
+            "/youtubei/v1/player".to_owned(),
+        ),
+        (String::new(), "/api/jnn/v1/Create".to_owned()),
+        (String::new(), "/iframe_api".to_owned()),
+        (
+            client_id(ClientKey::WebRemix),
+            "/youtubei/v1/player".to_owned(),
+        ),
+        (String::new(), "/iframe_api".to_owned()),
+        (String::new(), "/videoplayback".to_owned()),
+    ];
+    let (harness, captured, server) = harness(responses, guest_session()).await;
+    let request = PlaybackRequest::new("dQw4w9WgXcQ", high());
+    let data = match resolve_playback(&harness.youtube, &harness.engine, &request).await {
+        Ok(data) => data,
+        Err(error) => {
+            server.abort();
+            let requests = captured.lock().unwrap().clone();
+            panic!(
+                "the walk survived nothing: {error:?} | fingerprint: {:?}",
+                fingerprint(&requests)
+            );
+        }
+    };
+    server.await.unwrap();
+    let requests = captured.lock().unwrap().clone();
+    let fingerprint = fingerprint(&requests);
+    assert_eq!(fingerprint, expected, "exact degradation sequence");
+    // the n parameter passed through untransformed
+    assert!(
+        data.stream_url.contains("n=abc123"),
+        "the untransformed url must survive: {}",
+        data.stream_url
+    );
+}

@@ -160,17 +160,16 @@ pub(crate) fn pick_stream_url(
     if let Some((_, url)) = stream_urls.iter().find(|(itag, _)| *itag == format.itag) {
         return Some(url.clone());
     }
-    // then any itag the response itself calls audio
+    // then any itag the response itself calls audio — adaptiveFormats
+    // only (YTPlayerUtils.kt:1173-1177; the combined `formats` are
+    // video+audio muxes upstream never matches here — the 2026-11-21
+    // audit fixed the port from chaining them in)
     let audio_itags: Vec<i64> = player_response
         .streaming_data
         .as_ref()
         .map(|data| {
-            data.formats
-                .as_ref()
-                .map(|combined| combined.iter())
-                .into_iter()
-                .flatten()
-                .chain(data.adaptive_formats.iter())
+            data.adaptive_formats
+                .iter()
                 .filter(|candidate| candidate.is_audio())
                 .map(|candidate| candidate.itag)
                 .collect()
