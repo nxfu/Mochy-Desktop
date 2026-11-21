@@ -1419,3 +1419,208 @@ Rust 1.100.0, debug profile)
 4. Phase 09 should consume `validate::stale_splice` + `PlaybackCache`
    as documented, and revisit the 416-clear strength decision against
    the real byte-span cache behavior.
+
+## Phase 07 — 2026-11-21
+
+**Status:** done (all acceptance criteria met; artifacts emitted)
+
+**Task:** Login (wry webview), account, sync primitives, link parsing —
+Milestone M1 part 4, per the phase prompt: the
+`YouTubeLoginScreen.kt` port with the R3 mitigation stack, the
+`utils/SyncUtils.kt` foundation Phase 22 completes, the offline/
+data-saver gating, and the pure MainActivity 1597-1684 link parser.
+The ledger's remaining Phase 07 item (the wry login window + account
+menu + sign-out) plus this scope.
+
+**Branch:** `phase-07` cut from `origin/main` @ `07c9ec6` (the
+audit-fix baseline). **Commits (4):** `phase-07(net)` (data-saver
+gate + metered probe seam) → `phase-07(links)` (the pure link/share
+parser) → `phase-07(importer)` (the SyncUtils foundation) →
+`phase-07(login)` (the YouTubeLoginScreen port + the acceptance
+tests + the workspace pins).
+
+### What landed
+
+- **`mochy-net/src/datasaver.rs`** — `utils/DataSaver.kt` as atomics:
+  the `dataSaver`/`dataSaverMobileOnly` mirror of the OfflineMode
+  pattern, the `isActive(metered)` gate
+  (`enabled && (!mobileOnly || metered)`), a manual metered override,
+  and the per-OS metered probe seam (Windows NLM connection-cost /
+  NetworkManager `metered` / CoreWiFi hotspot — all `None` stubs with
+  the phase-14 probe plan documented; the manual switch stays always
+  available, the upstream behavior). The innertube settings mirror
+  (`SessionMirror`, the App.kt pump equivalent) feeds both halves at
+  initialize and on every change.
+- **`mochy/src/links.rs`** — `handleDeepLinkIntent`'s URI half
+  (MainActivity.kt:1606-1684) + the `importSharedAudio` share entry
+  (1565-1595) as pure functions over the `url` crate: the
+  path-segment dispatch (playlist + `OLAK5uy_` album auto-playlists,
+  browse→album, channel/c→artist, search `q=`, watch `v=` + youtu.be
+  + list-only play), the manifest hosts, and `vnd.youtube{,.launch}`
+  handling (see Decision 2). Table tests pin every dispatch arm, both
+  `vnd` forms, the upstream "does nothing" quirks (`/v/`, `/embed/`,
+  `/user/`), encoding and empty-segment normalization. `main()` now
+  consumes it for command-line link args — the Phase 14 deep-link
+  entry seam (the parity harness can probe `mochy 'https://youtu.be/x'`).
+- **`mochy-importer/src/sync/`** — the `SyncUtils.kt` foundation
+  (the crate's first public API): `state` (the 13-op vocabulary,
+  SyncStatus/SyncState), `pending` (upstream `PendingYouTubeLikes`
+  verbatim + the port's ordered `PendingOpQueue` — likes/library
+  edits made while signed out, replayed in record order on login,
+  failures retained in order), `engine` (the `YouTubeSyncApi`/`SyncDb`/
+  `Sleeper`/`LoveSink`/`ReplayApi` traits as boxed futures, the
+  queue-pumping engine with `executeLikeSong` fully ported — the
+  scrobbler love BEFORE the YouTube check, the SAPISID login gate
+  over the vault, the `YtExcludeImports` gate, the 3-attempt doubling
+  `withRetry` — and `Phase22Scope` markers for the pull arms),
+  `memory` (`YouTubeLikesMemory`: seen/removed journals, the
+  `droppedOnYouTube` short-list shield truth table), `undo`
+  (`SyncUndo` begin/likedBefore/recordPushedLikes/undo with the
+  `restoreLocal` diff over `SyncDb`), `lostlikes` (the `wanted()`
+  merge + count/bringBack scaffolding), `gates` (play reporting =
+  `YtReportPlays && !OfflineMode` per MusicService.kt:1196, the
+  opt-in history pull, the `tryAutoSync` cooldown gate with
+  `SYNC_COOLDOWN` 30 min, the undo hold).
+- **`mochy-ui-settings/src/login/`** — the
+  `YouTubeLoginScreen.kt` port in five modules: `cookies` (the
+  `getCookie` harvest as a pure function over a jar snapshot — RFC
+  6265 domain/path/expiry, HttpOnly never filtered — plus the
+  SAPISID guard), `ytcfg` (`READ_CONFIG_JS` verbatim + the
+  takeIf-filtered result parser with double-encoding tolerance),
+  `account` (finishLogin's save half: session push → `accountInfo`
+  over the Phase 04 `account/account_menu` endpoint behind a trait →
+  vault + settings persistence with immediate flush → sign-out =
+  `App.forgetAccount`: forget the keys, keep the library),
+  `loopback` (the tier-2 one-shot `127.0.0.1` listener), `manual`
+  (the tier-3 paste core), `webview` (the tier-1 wry window:
+  desktop-Chrome UA per OS, the music.youtube.com finish trigger, the
+  jar harvest + ytcfg scrape, the loopback tier 2 with the
+  continue-target swap, `run_return` for the embedded flow) behind
+  the `login-window` feature, and `LoginFlow` tying it together
+  (`login_with_paste` always compiled).
+
+**Tests: 392 workspace** (from 340), +52 net: the four acceptance
+tests (`tests/login.rs`: the recorded cookie-jar fixture extraction,
+the restart-reloads-from-the-vault persistence test over the
+`SessionMirror` loader, the paste flow + sign-out, the
+account-fetch-failure tolerance), the pending-queue in-order replay
+(+failure retention +restart), the droppedOnYouTube table, the
+undo/restore table, the lost-likes merge order, the gate tables, the
+DataSaver truth table, the mirror wiring, and the link-parser tables.
+fmt clean, `clippy --workspace --all-targets -D warnings` clean.
+
+### Decisions
+
+1. **The login window is feature-gated (`login-window`), off by
+   default.** wry's Linux backend needs webkit2gtk-4.1, which the CI
+   matrix does not install (and this sandbox cannot). The split
+   follows the repo's own feature discipline (`innertubex`, `live`):
+   everything testable without a webview — extraction, validation,
+   ytcfg, persistence, sign-out, loopback — is always compiled and
+   covered by the acceptance tests; only the ~200-line window/tao
+   glue sits behind the feature. The GPUI app shell (its own phase)
+   enables the feature where the system libraries exist.
+2. **`vnd.youtube` links are honored as video links, though the
+   pinned upstream handler never fires on them.** The Android
+   manifest registers both schemes, but `handleDeepLinkIntent`
+   receives them as opaque URIs (no host, no path segments) and
+   falls through to the no-video/no-list "does nothing" arm; only
+   `MEDIA_PLAY_FROM_SEARCH` actions make the filter meaningful. The
+   port honors the manifest's declared intent (the scheme-specific
+   part is the video id) — the conflict and its resolution are
+   recorded here, with the upstream fall-through pinned by a test on
+   the sibling cases so the delta stays deliberate.
+3. **The pending-op queue is a port addition on top of upstream
+   parity.** Upstream has exactly one pending store — the
+   import-liked ids (`PendingYouTubeLikes`) — and silently drops
+   signed-out likes (`executeLikeSong` returns at the login check).
+   The phase prompt's "pending-op queue that records likes/library
+   edits while signed out and replays them on login" is new behavior
+   the desktop keeps (a signed-out desktop app is a normal mode, not
+   a pre-login state). `PendingYouTubeLikes` is ported verbatim
+   beside it; the queue records only user like/library edits and
+   replays them in record order with failures retained.
+4. **The account menu is single-account with the triple persisted
+   (name/email/handle) and the photo transient** — exactly
+   upstream (YouTubeSyncScreen renders the persisted triple; the
+   photo re-renders from a fresh `accountInfo`). The account fetch
+   rides the already-mirrored session, so the window flow hands
+   credentials to the caller and the async completion
+   (`complete_login`) runs on the app's runtime.
+5. **The data-saver gate lives in mochy-net next to OfflineMode**
+   (both are process-wide bandwidth gates the HTTP layer and the
+   stream picker consult), fed by the innertube settings mirror —
+   the App.kt observers are the seam upstream, the mirror pump is
+   its port. The metered answer is an override-able atomic until the
+   phase-14 OS probes land (the R5-carrying probes need the
+   desktop-integration crates).
+6. **`url` is the link parser's only new always-on dependency**
+   (already in the graph via reqwest). `tao`/`cookie` join `wry` as
+   the feature's optional workspace pins (§9 updated).
+7. **The mirror tests serialize on a file-local lock** — the new
+   data-saver assertions read the process-global gate, and sibling
+   `SessionMirror::initialize` calls in the same test binary race
+   it (the cross-crate sibling of mochy-net's OFFLINE_FLAG_LOCK
+   discipline; the same latent race exists for the offline flag but
+   no test asserts the global there).
+
+### Deviations
+
+- **The tier-1/tier-2 window code is type-checked, not
+  behavior-tested** — this sandbox has no webkit2gtk and no cross C
+  toolchain for a Linux build of it. Verification: a throwaway check
+  crate type-checked `webview.rs` against the REAL wry 0.57.3 + tao
+  0.37 + cookie 0.18 crates for the `x86_64-pc-windows-msvc` target
+  (all their Windows backends are pure Rust; the same code path as
+  macOS). The cross-check caught and fixed three real defects before
+  they shipped: `std::sync::Cell` (nonexistent — `std::cell`),
+  `EventLoop::<T>::with_user_event()` (the builder owns it) and
+  `Cell<bool>` not `Send` for wry's callback (now `AtomicBool`). The
+  macOS leg additionally needs an ObjC compiler
+  (`objc2-exception-helper`) and stays API-audit-verified only; the
+  Linux leg needs webkit2gtk-4.1 installed. First runner with the
+  libraries should `cargo check -p mochy-ui-settings --features
+  login-window` as the gate.
+- **Host comparison in the link parser is case-insensitive** (RFC
+  3986, the `url` crate normalizes; Android's `Uri.host` is
+  verbatim). Pinned by a test; observably equal for every real
+  YouTube link.
+- **Empty path segments are normalized away** (a trailing slash on
+  `/browse/` behaves like the upstream bare `/browse` quirk —
+  `lastPathSegment` is the literal `browse`, which navigates to
+  `album/browse`). Android's `Uri` is ambiguous here; the choice is
+  pinned by tests.
+- **`run_login_window` returns `WindowOutcome::Harvested(creds)`**
+  rather than completing the login itself — the completion is async
+  (the account fetch needs the app runtime), and the window flow is
+  sync (the event loop owns the thread). `LoginFlow::complete` is
+  the caller's next step; `login_with_paste` shows the one-call
+  shape.
+
+### Next steps (for Phase 08 / the M1 close-out)
+
+1. **CP M1 is now fully assembled** across Phases 04-08's actual
+   landings: client registry + transport + auth (04), parsers +
+   facade + fixtures (05), stream resolution (06, with the audit
+   corrections), login + sync primitives + links (07). The
+   checkpoint's remaining evidence is the live end-to-end run —
+   behind `--features live` on a networked maintainer machine, now
+   able to also drive the login window (`--features
+   login-window, live`).
+2. Phase 22 ports the pull arms (`executeSyncLikedSongs` & co.) over
+   `mochy-importer/src/sync`'s traits — the engine's
+   `Phase22Scope` markers enumerate them; the adapter bridges the
+   mochy-db actor and the async facade (`ReplayThroughApi` shows the
+   shape). `PendingYouTubeLikes` integration into the liked-songs
+   pull (the push-instead-of-unlike rule, SyncUtils.kt:456-473) is
+   the first arm to port.
+3. Phase 14 consumes `mochy::links::parse` for the deep-link router
+   and adds the OS scheme registration (`mochy://`, file
+   associations) the seam in `main()` awaits; the metered probes
+   (`detect_metered`) land with the same phase's desktop
+   integration.
+4. The wry login window needs its first on-metal verification
+   (Windows or a webkit2gtk Linux box): the UA guard, the tier-1
+   harvest, and the tier-2 loopback redirect against real Google —
+   plus the `login-window` CI leg decision (system libs or
+   maintainer-only).

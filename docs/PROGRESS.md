@@ -72,7 +72,7 @@ phase, awaiting a phase prompt):*
 (transport) had already landed early: mochy-net in Phase 02, the
 InnerTube transport + guest sessions in Phase 04. The parser/facade
 work this prompt assigned is done here; see HANDOFF ## Phase 05.)*
-- [x] mochy-net: reqwest factory (rustls), proxy SOCKS/HTTP + auth, IPv4/IPv6 pinning, DoH, 50 MB disk response cache, offline flag (pulled forward into Phase 02 by its task prompt; data-saver gate remains — it reads the connectivity observer, Phase 05)
+- [x] mochy-net: reqwest factory (rustls), proxy SOCKS/HTTP + auth, IPv4/IPv6 pinning, DoH, 50 MB disk response cache, offline flag (pulled forward into Phase 02 by its task prompt; the data-saver gate landed in Phase 07 — `mochy-net/datasaver.rs`, fed by the innertube settings mirror, per-OS metered probe stubbed)
 - [x] InnerTube transport port: per-request header injection, gzip, HTTP/2, 3-attempt exponential backoff on IO errors, 429 short-circuit (done in Phase 04 by its task prompt — `InnerTubeTransport` + the 22-endpoint layer)
 - [x] Guest visitor-data scraping + rotation (`BotDetectionMitigator` semantics) (done in Phase 04 — `guest.rs` + the mirror's scrape hooks)
 - [x] DTO layer (serde) for search/browse/next/player/queue/suggestions/transcript/account/playlist ops/like-subscription responses; comments stack + LibraryAlbumsPage + AddItemYouTubePlaylistResponse skipped as dead (PORT_SPEC §4)
@@ -88,7 +88,7 @@ work this prompt assigned is done here; see HANDOFF ## Phase 05.)*
 ### Phase 07 — Client registry + auth (mochy-innertube)
 - [x] 18-client registry (WEB…VISIONOS; ANDROID_NO_SDK excluded as dead) (done in Phase 04 — verbatim port + roles; ANDROID_NO_SDK registered but unwired)
 - [x] Cookie auth + SAPISIDHASH (SHA-1 of `time SAPISID origin`, origin-bound) (done in Phase 04 — `auth.rs` + transport injection + mirror; the vault holds the secrets)
-- [ ] wry login window with cookie extraction; account menu (name/email/handle/photo) over the Phase 04 endpoint; sign-out forgets keys; HANDOFF entry
+- [x] wry login window with cookie extraction; account menu (name/email/handle/photo) over the Phase 04 endpoint; sign-out forgets keys; HANDOFF entry (done in Phase 07 — `mochy-ui-settings/src/login/`: pure extraction/persistence core fully tested; the wry window + loopback fallback behind the `login-window` feature (webview system libraries, cross-checked for the Windows target); manual paste always compiled. The phase's prompt also pulled in the SyncUtils foundation (mochy-importer/sync: pending-op queue with in-order login replay, likes memory, undo journal, lost-likes scaffolding, engine traits + history/play-report gates), the DataSaver.kt gate (mochy-net/datasaver + mirror wiring) and the pure YouTube link/share parser (mochy/src/links.rs, MainActivity 1597-1684) — see HANDOFF ## Phase 07)
 
 ### Phase 08 — Stream resolution (mochy-innertube) — CP M1
 *(This phase's whole scope landed early: it was the Phase 06 prompt's
@@ -141,7 +141,7 @@ Work".)*
 ### Phase 14 — Media session + tray (mochy-media)
 - [ ] MPRIS (zbus + mpris-server), SMTC (WinRT), Now Playing (macOS); like/radio custom entries
 - [ ] Tray + muda menus, hardware media keys, notifications (per-OS adapters), `mochy://` deep links, single instance (interprocess)
-- [ ] YouTube-URL deep-link router (MainActivity 1597-1684 semantics); HANDOFF entry
+- [ ] YouTube-URL deep-link router (MainActivity 1597-1684 semantics); HANDOFF entry (the pure parser landed in Phase 07 — `mochy/src/links.rs`, table-tested over every upstream case; the window/router wiring is this phase's work)
 
 ### Phase 15 — Downloads (mochy-downloads) — CP M3
 - [ ] Job queue (parallelism 3), itag-stability resume guard, auto-download rules (on-like, per-playlist watermarks)
@@ -191,7 +191,7 @@ Work".)*
 ### Phase 22 — Importer (mochy-importer) — CP M6
 - [ ] Spotify/Apple/Tidal account import (wry capture or manual token), link + CSV import (TuneMyMusic/Exportify mapping)
 - [ ] Local file import (lofty tags, sidecars, album grouping, LOCAL_ ids), shared-audio receive via file association
-- [ ] TrackMatcher port; import sessions + undo + resync; TransferArchive read/write; YT two-way sync + pending-like reconciliation
+- [ ] TrackMatcher port; import sessions + undo + resync; TransferArchive read/write; YT two-way sync + pending-like reconciliation (the SyncUtils foundation landed in Phase 07 — `mochy-importer/src/sync/`: operation/state machine, the pending-op queue with in-order login replay, YouTubeLikesMemory, SyncUndo, LostLikes scaffolding, engine traits + gates; this phase ports the full pull arms over them)
 - [ ] M6 checkpoint: full library migration from an Android device; HANDOFF entry
 
 ## M7 — Integrations

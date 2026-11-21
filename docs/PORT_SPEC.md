@@ -313,6 +313,15 @@ reqwest 0.13.5 pin (0.13 moved `RequestBuilder::query` behind
 serde_urlencoded; the innertube transport shapes query params like
 upstream's ktor `parameter()` calls).
 
+Phase 07 additions (verified on crates.io 2026-11-21, recorded in
+HANDOFF ## Phase 07): `url` 2.5.8 (the deep-link/share parser — already
+in the graph via reqwest, pinned so `mochy` names one version), `tao`
+0.37.0 (the login webview's event loop; the exact line wry 0.57.3's own
+dev-dependencies pin) and `cookie` 0.18 (the type wry's
+`cookies_for_url` returns; same line reqwest already resolves). All
+three are optional-dependency seams of the `login-window` feature except
+`url`, which the always-compiled parser uses.
+
 Licensing constraints that ride along: yt-dlp EJS bundle = Unlicense (safe to
 vendor); **meriyah/astring licenses need verification before vendoring**;
 symphonia = MPL-2.0 (used unmodified — no file-level disclosure triggered);
