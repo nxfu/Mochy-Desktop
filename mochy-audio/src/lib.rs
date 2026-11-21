@@ -10,6 +10,8 @@
 //! processors themselves (EQ, Stage, spatial, …) land in Phases 19–20 on
 //! top of the graph seams defined here.
 
+pub mod pcm;
+pub mod precision;
 pub mod sinc;
 
 #[cfg(test)]
