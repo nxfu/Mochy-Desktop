@@ -16,3 +16,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[dependencies]
+# Phase 08: the decode pipeline (TrackDecoder, SincResampler,
+# RangedMediaSource) the voices fill their rings from. Domain-only — no
+# GPUI, no tokio in this crate's public API (PORT_SPEC §3.1).
+mochy-audio = { path = "../mochy-audio" }
+thiserror = { workspace = true }
