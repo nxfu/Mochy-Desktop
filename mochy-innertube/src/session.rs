@@ -169,7 +169,6 @@ impl SessionMirror {
             guard.use_login_for_browse = settings.UseLoginForBrowse();
             guard.ip_version = ip_version_from(&settings);
             guard.proxy = proxy_from(&settings, vault);
-
             // App.kt:240-247 — visitorData, with the literal "null" treated
             // as absent
             let stored = vault.get(VaultKey::VisitorData);
@@ -196,6 +195,10 @@ impl SessionMirror {
         // offline mirrors into the shared gate (App.kt:191,
         // utils/OfflineMode.set)
         mochy_net::set_offline(settings.OfflineMode());
+        // the data-saver gate mirrors the same way (utils/DataSaver.kt
+        // reads the store per call upstream; the desktop gate is fed by
+        // this pump — App.kt's settings observers are the seam)
+        mochy_net::apply_data_saver_settings(settings.DataSaver(), settings.DataSaverMobileOnly());
         Ok(scrape)
     }
 
@@ -238,6 +241,15 @@ impl SessionMirror {
                         guard.offline = *on;
                     }
                 }
+            }
+            SettingId::DataSaver | SettingId::DataSaverMobileOnly => {
+                // DataSaver.kt reads the store live upstream; the desktop
+                // gate is atomic, so push both halves on either change
+                let settings = store.snapshot();
+                mochy_net::apply_data_saver_settings(
+                    settings.DataSaver(),
+                    settings.DataSaverMobileOnly(),
+                );
             }
             SettingId::VisitorData => {
                 // App.kt:240-247: absent/"null" -> scrape + persist

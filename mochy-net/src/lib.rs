@@ -13,6 +13,9 @@
 //!   call against the offline flag.
 //! - `utils/OfflineMode.kt` + `App.kt:187-235`: a global offline flag set at
 //!   startup and on every change of the setting, consulted by every request.
+//! - `utils/DataSaver.kt`: the data-saver gate — on when the switch is, and
+//!   only on metered networks unless "mobile only" is turned off; mirrored
+//!   into atomics here, with a per-OS metered probe seam (Phase 07 stubs).
 //! - `utils/AppProxy.kt`: explicit SOCKS/HTTP proxy with optional basic
 //!   auth; `parseAddress` skips a pasted scheme or login in front of the
 //!   `host:port`.
@@ -31,6 +34,7 @@
 
 mod cache;
 mod client;
+mod datasaver;
 mod doh;
 mod error;
 mod offline;
@@ -39,6 +43,10 @@ mod proxy;
 
 pub use cache::{ByteRange, DiskCache, DiskCacheError, INNERTUBE_DISK_CACHE_BYTES, ResponseCache};
 pub use client::{ClientFactory, ClientSpec, DEFAULT_USER_AGENT};
+pub use datasaver::{
+    apply_data_saver_settings, detect_metered, is_active, is_active_with, metered,
+    refresh_metered_from_os, set_data_saver, set_data_saver_mobile_only, set_metered,
+};
 pub use doh::{CLOUDFLARE_DOH_URL, DohResolver};
 pub use error::NetError;
 pub use offline::{OfflineFlag, set_offline};

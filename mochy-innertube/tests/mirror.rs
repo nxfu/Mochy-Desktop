@@ -285,3 +285,46 @@ fn proxy_change_with_signed_out_session_triggers_rotation() {
         "a signed-out proxy change must rotate the guest session"
     );
 }
+
+/// Phase 07: the mirror also feeds the data-saver gate
+/// (utils/DataSaver.kt reads the store live on Android; the desktop gate
+/// is atomic and this pump is the equivalent of the store read).
+#[test]
+fn initialize_and_watchers_feed_the_data_saver_gate() {
+    let store = temp_store();
+    let vault = Vault::open_in_memory();
+    let session: SharedSession = Arc::new(RwLock::new(Session::default()));
+
+    // defaults: switch off -> gate never active
+    SessionMirror::initialize(&store, &vault, &session, &SystemLocale::default()).unwrap();
+    assert!(!mochy_net::is_active_with(true));
+
+    // switch on, mobile-only on: active only while metered
+    store
+        .set_by_id(SettingId::DataSaver, SettingValue::Bool(true))
+        .unwrap();
+    SessionMirror::initialize(&store, &vault, &session, &SystemLocale::default()).unwrap();
+    assert!(mochy_net::is_active_with(true));
+    assert!(!mochy_net::is_active_with(false));
+
+    // live change through the watcher: "mobile only" off -> always active
+    let (receiver, _guard) = SessionMirror::subscribe(&store).unwrap();
+    store
+        .set_by_id(SettingId::DataSaverMobileOnly, SettingValue::Bool(false))
+        .unwrap();
+    while let Ok(event) = receiver.try_recv() {
+        SessionMirror::handle_one(
+            &event,
+            &store,
+            &vault,
+            &session,
+            &SystemLocale::default(),
+            &|_session| {},
+        )
+        .unwrap();
+    }
+    assert!(mochy_net::is_active_with(false), "always-on data saver");
+
+    // restore the global defaults for any later test in this binary
+    mochy_net::apply_data_saver_settings(false, true);
+}
