@@ -119,6 +119,50 @@ fn host_console(level: rquickjs::function::Rest<String>) {
     }
 }
 
+/// The engine thread's OS stack, in bytes.
+///
+/// The JS engine runs player-scale JavaScript — the vendored EJS bundle
+/// parses a full 2.7 MB YouTube player with meriyah (itself JavaScript),
+/// the signature cipher and the BotGuard client — and QuickJS-NG
+/// recurses in C for every JS-to-JS call (`JS_CallInternal`), so the
+/// interpreter's C frame rides the stack once per JS call level.
+///
+/// Measured on Linux/GCC debug builds (2026-11-21 audit, see HANDOFF
+/// "Phase 04–06 Audit and Corrective Work"): the EJS pipeline peaks at
+/// ~250 KiB of C stack for the delta-trimmed challenge fixture and
+/// ~500 KiB for the real full player — leaving only a ~2× margin under
+/// QuickJS's own 1 MiB default budget. Debug-profile MSVC frames for
+/// `JS_CallInternal` are several times larger than GCC's (every local
+/// of the one-function interpreter gets its own unshared slot under
+/// `/Od`), which pushed the same recursion past the 1 MiB budget on
+/// Windows CI and failed the recorded-challenge test with a swallowed
+/// `RangeError: Maximum call stack size exceeded`. macOS secondary
+/// threads default to a 512 KiB stack — thinner than the real player's
+/// measured need — so an explicit reservation is required there too.
+///
+/// The reservation is virtual address space, committed on touch; one
+/// engine per process (plus a handful in tests) makes the cost
+/// irrelevant. It must stay comfortably larger than
+/// [`ENGINE_JS_STACK_BUDGET`] so QuickJS's own limit fires (a clean,
+/// catchable `RangeError`) long before the real stack bottom — a JS
+/// budget larger than the thread stack turns the guard into a hard
+/// `SIGSEGV`/`0xC00000FD` instead (verified experimentally during the
+/// audit).
+const ENGINE_THREAD_STACK: usize = 32 * 1024 * 1024;
+
+/// The QuickJS recursion budget exposed to scripts, in bytes
+/// ([`Runtime::set_max_stack_size`]).
+///
+/// 16 MiB is ~8× the MSVC-debug worst-case estimate for the real
+/// player pipeline (~2 MiB) and ~64× the trimmed-fixture need measured
+/// on Linux; release-profile frames are smaller still. QuickJS's
+/// default (1 MiB) was tuned for embedding qjs-sized snippets, not for
+/// a JavaScript-implemented parser eating hundreds of interpreter
+/// frames per nest level — upstream's Android WebViews ran the same
+/// bundle on V8, whose frames are compact enough that its ~1 MiB
+/// default sufficed; the port compensates for QuickJS's fatter frames.
+const ENGINE_JS_STACK_BUDGET: usize = 16 * 1024 * 1024;
+
 /// One unit of JS work for the engine thread.
 type Job = Box<dyn FnOnce(&Runtime, &Context) + Send + 'static>;
 
@@ -134,6 +178,7 @@ impl Engine {
         let (boot_tx, boot_rx) = std::sync::mpsc::channel::<Result<(), JsError>>();
         std::thread::Builder::new()
             .name("mochy-js-engine".to_owned())
+            .stack_size(ENGINE_THREAD_STACK)
             .spawn(move || {
                 let runtime = match Runtime::new() {
                     Ok(runtime) => runtime,
@@ -142,6 +187,10 @@ impl Engine {
                         return;
                     }
                 };
+                // Raise QuickJS's internal recursion budget before any
+                // script runs (the default 1 MiB starves meriyah on
+                // debug-profile frames; see ENGINE_JS_STACK_BUDGET).
+                runtime.set_max_stack_size(ENGINE_JS_STACK_BUDGET);
                 let context = match Context::full(&runtime) {
                     Ok(context) => context,
                     Err(error) => {
@@ -296,6 +345,45 @@ mod tests {
         // state persists across jobs (one context, like one WebView)
         let again: i32 = engine.eval("__t").await.unwrap();
         assert_eq!(again, 20);
+    }
+
+    /// Regression (2026-11-21 audit): the engine must budget JS
+    /// recursion for player-scale scripts. QuickJS-NG consumes one C
+    /// `JS_CallInternal` frame per JS call, and the EJS bundle's
+    /// meriyah parse needs ~80 (trimmed fixture) to ~160 (real player)
+    /// such frames; debug-profile frames are 3+ KiB each on GCC and
+    /// several times that on MSVC. Depth 512 exceeds what QuickJS's
+    /// old 1 MiB default budget allowed even on Linux (~326 frames
+    /// measured) — the exact condition that failed the recorded
+    /// n-challenge test on Windows CI — and must now succeed
+    /// everywhere (512 × 4 KiB = 2 MiB ≪ [`ENGINE_JS_STACK_BUDGET`]).
+    #[tokio::test]
+    async fn js_recursion_budget_covers_player_parser_depths() {
+        let engine = Engine::new().unwrap();
+        let depth: i32 = engine
+            .eval(
+                "(function () { \
+                     function f(n) { return n <= 0 ? 0 : f(n - 1) + 1; } \
+                     return f(512); \
+                 })()",
+            )
+            .await
+            .expect("512-deep JS recursion must fit the engine budget");
+        assert_eq!(depth, 512);
+        // and the budget stays bounded: absurd recursion still fails
+        // cleanly instead of exhausting the thread
+        let overflowed: Result<i32, _> = engine
+            .eval(
+                "(function () { \
+                     function f(n) { return n <= 0 ? 0 : f(n - 1) + 1; } \
+                     return f(1000000); \
+                 })()",
+            )
+            .await;
+        assert!(
+            overflowed.is_err(),
+            "a million frames must still hit the budget ceiling"
+        );
     }
 
     #[tokio::test]

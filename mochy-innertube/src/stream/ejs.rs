@@ -43,11 +43,22 @@ const SOLVER_CORE_JS: &str = include_str!("../../assets/solver/yt.solver.core.js
 /// The QuickJS state (globals `__ejsN` / `__ejsSig`) lives in the
 /// shared engine; this struct is just the compiled marker plus a
 /// handle to it, mirroring upstream's single cached `solverWebView`.
+///
+/// When the bundle could not extract the functions, `compile_error`
+/// carries the bundle's own failure text (the exception the pipeline
+/// threw or the `type: 'error'` payload) so callers and tests can see
+/// *why* — upstream kept a dead webview and answered "not available"
+/// on every later call; the port keeps the not-available contract but
+/// refuses to swallow the reason invisibly (2026-11-21 audit: the
+/// Windows CI failure was this struct reporting `n_available == false`
+/// with the underlying `RangeError: Maximum call stack size exceeded`
+/// discarded into an uninitialized `tracing` sink).
 #[derive(Debug, Clone)]
 pub struct EjsSolver {
     engine: Arc<Engine>,
     n_available: bool,
     sig_available: bool,
+    compile_error: Option<String>,
 }
 
 /// Boot the shared engine's EJS environment: the two dependency UMDs
@@ -134,17 +145,26 @@ impl EjsSolver {
         let mut fields = availability.split(',');
         let n_available = fields.next() == Some("true");
         let sig_available = fields.next() == Some("true");
-        if !compiled {
+        let mut compile_error = None;
+        if !compiled || !n_available || !sig_available {
             let error: String = engine
                 .eval("globalThis.__ejsError || 'EJS preprocessing failed'")
                 .await
                 .unwrap_or_else(|_| "EJS preprocessing failed".into());
-            tracing::warn!(target: "mochy_ejs", error, "EJS solver could not extract the n function");
+            compile_error = Some(if !compiled {
+                error
+            } else {
+                // the wrapper finished but the player exported no
+                // solver — the bundle found zero candidates
+                format!("{error} (no solver exported)")
+            });
+            tracing::warn!(target: "mochy_ejs", error = %compile_error.as_deref().unwrap_or_default(), "EJS solver could not extract the n function");
         }
         Ok(EjsSolver {
             engine,
             n_available,
             sig_available,
+            compile_error,
         })
     }
 
@@ -160,6 +180,13 @@ impl EjsSolver {
     /// for the NewPipe-equivalent fallback.
     pub fn sig_available(&self) -> bool {
         self.sig_available
+    }
+
+    /// Why the bundle failed to produce a solver, when it did
+    /// (upstream's dead-webview "not available" state, with the
+    /// reason retained).
+    pub fn compile_error(&self) -> Option<&str> {
+        self.compile_error.as_deref()
     }
 
     /// Run the n-transform on one value (the HTML's `transformN` +
@@ -306,8 +333,16 @@ mod tests {
         )
         .expect("challenges parse");
         let solver = EjsSolver::compile(engine, &player).await.unwrap();
-        assert!(solver.n_available(), "the n solver must be extracted");
-        assert!(solver.sig_available(), "the sig solver must be extracted");
+        assert!(
+            solver.n_available(),
+            "the n solver must be extracted (compile error: {:?})",
+            solver.compile_error()
+        );
+        assert!(
+            solver.sig_available(),
+            "the sig solver must be extracted (compile error: {:?})",
+            solver.compile_error()
+        );
         for challenge in &challenges.n {
             let solved = solver.transform_n(&challenge.input).await.unwrap();
             assert_eq!(solved, challenge.expected, "recorded n vector");
@@ -327,6 +362,11 @@ mod tests {
             .await
             .unwrap();
         assert!(!solver.n_available());
+        // the failure reason is surfaced, not swallowed
+        assert!(
+            solver.compile_error().is_some(),
+            "an unavailable solver must carry its compile error"
+        );
         let url = "https://example.com/videoplayback?n=abc&itag=140";
         assert_eq!(solver.transform_n_param_in_url(url).await, url);
     }

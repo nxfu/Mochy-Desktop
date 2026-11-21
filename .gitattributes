@@ -1,0 +1,28 @@
+# Byte-stable text assets across platforms (2026-11-21 audit).
+#
+# The Windows CI runners check out with git's `core.autocrlf=true`
+# default, which rewrites every text file to CRLF in the working tree.
+# That must not reach bytes that are semantically load-bearing:
+#
+# - `mochy-innertube/assets/solver/*.js` are vendored upstream artifacts
+#   whose integrity is asserted by checksum (byte-identity with the
+#   pinned Android baseline and the official npm builds) and are
+#   compiled into the binary via include_str!;
+# - `tests/fixtures/` is replayed byte-for-byte by the offline suites.
+#
+# This was investigated as a candidate root cause of the Windows EJS
+# test failure and ruled out (CRLF fixtures still pass), but the
+# normalization removes the whole class of working-tree divergence
+# between platforms. Rust source, manifests and CI config are pinned to
+# LF as well — rustfmt's output — so a Windows checkout builds and
+# formats identically to Linux/macOS.
+*.js  text eol=lf
+*.json text eol=lf
+*.rs  text eol=lf
+*.toml text eol=lf
+*.lock text eol=lf
+*.md  text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.txt text eol=lf
+*.jsonl text eol=lf
